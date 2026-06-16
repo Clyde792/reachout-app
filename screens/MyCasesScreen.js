@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { AlertTriangle, Clock, ClipboardList } from 'lucide-react-native';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -73,13 +74,19 @@ export default function MyCasesScreen({ navigation, worker }) {
                     <View style={styles.cardInfo}>
                         <View style={styles.cardRow}>
                             <View style={{ flex: 1, marginRight: 8 }}>
-                                <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>{item.display_name || item.username || 'Unknown'}</Text>
+                                <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
+                                    {item.display_name || item.username || 'Unknown'}
+                                </Text>
                                 <Text style={styles.usernameSmall} numberOfLines={1}>@{item.username || ''}</Text>
                             </View>
-                            <Text style={styles.timeAgo}>{getTimeAgo(item.last_message_time)}</Text>
+                            <View style={styles.timeRow}>
+                                <Clock size={11} color="#8E8E93" />
+                                <Text style={styles.timeAgo}>{getTimeAgo(item.last_message_time)}</Text>
+                            </View>
                         </View>
                         <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
                             <View style={[styles.riskBadge, { backgroundColor: getRiskColor(item.risk_level) }]}>
+                                {isHighRisk && <AlertTriangle size={9} color="#fff" style={{ marginRight: 3 }} />}
                                 <Text style={styles.riskText}>{(item.risk_level || 'unknown').toUpperCase()}</Text>
                             </View>
                         </View>
@@ -88,14 +95,13 @@ export default function MyCasesScreen({ navigation, worker }) {
 
                 <View style={styles.progressSection}>
                     <View style={styles.moodRow}>
-                        <Text style={styles.moodEmoji}>😢</Text>
+                        <Text style={styles.moodLabel}>Mood</Text>
                         <View style={styles.moodTrack}>
                             <View style={[styles.moodFill, {
                                 width: `${item.mood_score || 50}%`,
                                 backgroundColor: item.mood_score >= 60 ? '#34C759' : item.mood_score >= 40 ? '#FF9500' : '#FF3B30'
                             }]} />
                         </View>
-                        <Text style={styles.moodEmoji}>😊</Text>
                         <Text style={styles.moodScore}>{item.mood_score || 50}</Text>
                     </View>
                 </View>
@@ -118,7 +124,7 @@ export default function MyCasesScreen({ navigation, worker }) {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMyCases} tintColor="#007AFF" />}
                 ListEmptyComponent={
                     <View style={styles.empty}>
-                        <Text style={styles.emptyEmoji}>📋</Text>
+                        <ClipboardList size={48} color="#C7C7CC" />
                         <Text style={[styles.emptyTitle, { color: colors.text }]}>No cases yet</Text>
                         <Text style={styles.emptySub}>Go to Home to claim unassigned youths</Text>
                     </View>
@@ -154,19 +160,19 @@ const styles = StyleSheet.create({
     avatarText: { fontSize: 16, fontWeight: '700' },
     cardInfo: { flex: 1 },
     cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    timeRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     timeAgo: { fontSize: 12, color: '#8E8E93' },
-    riskBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },
+    riskBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexDirection: 'row', alignItems: 'center' },
     riskText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-    empty: { alignItems: 'center', marginTop: 80 },
-    emptyEmoji: { fontSize: 48, marginBottom: 12 },
+    empty: { alignItems: 'center', marginTop: 80, gap: 12 },
     emptyTitle: { fontSize: 17, fontWeight: '600' },
     emptySub: { fontSize: 14, color: '#8E8E93', marginTop: 4 },
     displayName: { fontSize: 15, fontWeight: '700' },
     usernameSmall: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
     progressSection: { borderTopWidth: 0.5, borderTopColor: '#2D2D44', paddingTop: 10, marginBottom: 8 },
-    moodRow: { flexDirection: 'row', alignItems: 'center' },
-    moodEmoji: { fontSize: 16 },
-    moodTrack: { flex: 1, height: 6, backgroundColor: '#3A3A3C', borderRadius: 3, overflow: 'hidden', marginHorizontal: 8 },
+    moodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    moodLabel: { fontSize: 11, color: '#8E8E93', width: 32 },
+    moodTrack: { flex: 1, height: 6, backgroundColor: '#3A3A3C', borderRadius: 3, overflow: 'hidden' },
     moodFill: { height: 6, borderRadius: 3 },
     moodScore: { fontSize: 11, color: '#8E8E93', width: 24, textAlign: 'right' },
 });

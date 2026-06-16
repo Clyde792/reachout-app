@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../supabase';
 import { useTheme } from '../context/ThemeContext';
+import { Camera, Phone, Pencil, LogOut } from 'lucide-react-native';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -12,7 +13,6 @@ export default function ProfileScreen({ worker }) {
     const { colors, isDark } = useTheme();
     const [highRiskAlerts, setHighRiskAlerts] = useState(true);
     const [crisisNotifications, setCrisisNotifications] = useState(true);
-
     const [profile, setProfile] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [form, setForm] = useState({ name: '', phone: '' });
@@ -99,17 +99,15 @@ export default function ProfileScreen({ worker }) {
         setUploadingPhoto(true);
         try {
             const photoBase64 = 'data:image/jpeg;base64,' + result.assets[0].base64;
-
             const method = profile ? 'PATCH' : 'POST';
             const url = profile
                 ? `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}`
                 : `${SUPABASE_URL}/rest/v1/worker_profiles`;
-
             const body = profile
                 ? JSON.stringify({ photo_base64: photoBase64 })
                 : JSON.stringify({ email: worker.email, photo_base64: photoBase64 });
 
-            const res = await fetch(url, {
+            await fetch(url, {
                 method,
                 headers: {
                     apikey: SUPABASE_KEY,
@@ -119,8 +117,6 @@ export default function ProfileScreen({ worker }) {
                 },
                 body,
             });
-
-            console.log('Photo save status:', res.status);
             await fetchProfile();
         } catch (e) {
             console.error('Photo save error:', e);
@@ -155,18 +151,24 @@ export default function ProfileScreen({ worker }) {
                         <View style={styles.avatarEditBadge}>
                             {uploadingPhoto
                                 ? <ActivityIndicator size="small" color="#fff" />
-                                : <Text style={{ fontSize: 12 }}>📷</Text>}
+                                : <Camera size={13} color="#fff" />}
                         </View>
                     </TouchableOpacity>
 
                     <Text style={[styles.name, { color: colors.text }]}>{displayName}</Text>
                     <Text style={styles.email}>{worker?.email}</Text>
-                    {profile?.phone ? <Text style={styles.phone}>📞 {profile.phone}</Text> : null}
+                    {profile?.phone ? (
+                        <View style={styles.phoneRow}>
+                            <Phone size={13} color="#8E8E93" />
+                            <Text style={styles.phone}>{profile.phone}</Text>
+                        </View>
+                    ) : null}
                     <View style={styles.roleBadge}>
                         <Text style={styles.roleText}>Youth Worker · SCS</Text>
                     </View>
                     <TouchableOpacity style={styles.editProfileBtn} onPress={openEdit}>
-                        <Text style={styles.editProfileBtnText}>✏️ Edit Profile</Text>
+                        <Pencil size={14} color="#007AFF" />
+                        <Text style={styles.editProfileBtnText}>Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -222,6 +224,7 @@ export default function ProfileScreen({ worker }) {
                 </View>
 
                 <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: colors.card }]} onPress={handleLogout}>
+                    <LogOut size={17} color="#FF3B30" />
                     <Text style={styles.logoutText}>Sign Out</Text>
                 </TouchableOpacity>
 
@@ -235,7 +238,7 @@ export default function ProfileScreen({ worker }) {
                     pointerEvents="box-none">
                     <View style={styles.overlayBackdrop}>
                         <View style={[styles.overlayBox, { backgroundColor: colors.card }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>✏️ Edit Profile</Text>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Profile</Text>
 
                             <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Display Name</Text>
                             <TextInput
@@ -300,10 +303,11 @@ const styles = StyleSheet.create({
     avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
     name: { fontSize: 20, fontWeight: '700' },
     email: { fontSize: 14, color: '#8E8E93', marginTop: 2 },
-    phone: { fontSize: 14, color: '#8E8E93', marginTop: 4 },
+    phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    phone: { fontSize: 14, color: '#8E8E93' },
     roleBadge: { backgroundColor: '#E5F1FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, marginTop: 8 },
     roleText: { color: '#007AFF', fontSize: 13, fontWeight: '600' },
-    editProfileBtn: { marginTop: 14, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#007AFF' },
+    editProfileBtn: { marginTop: 14, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#007AFF', flexDirection: 'row', alignItems: 'center', gap: 6 },
     editProfileBtnText: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
     section: { marginHorizontal: 16, marginTop: 24 },
     sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
@@ -313,7 +317,7 @@ const styles = StyleSheet.create({
     infoValue: { fontSize: 15, fontWeight: '500' },
     alertHint: { fontSize: 11, color: '#8E8E93', marginTop: 2 },
     divider: { height: 0.5, marginHorizontal: 12 },
-    logoutBtn: { marginHorizontal: 16, marginTop: 24, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FF3B30' },
+    logoutBtn: { marginHorizontal: 16, marginTop: 24, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FF3B30', flexDirection: 'row', justifyContent: 'center', gap: 8 },
     logoutText: { color: '#FF3B30', fontSize: 17, fontWeight: '600' },
     overlayBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     overlayBox: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },

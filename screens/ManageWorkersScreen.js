@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, TouchableOpacity, StyleSheet, ScrollView,
     TextInput, Modal, ActivityIndicator, Alert, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+import { Plus, Pencil, Trash2, Users, Mail, Phone } from 'lucide-react-native';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -16,7 +17,7 @@ export default function ManageWorkersScreen({ navigation }) {
     const [workers, setWorkers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [editingWorker, setEditingWorker] = useState(null); // null = add mode
+    const [editingWorker, setEditingWorker] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
@@ -63,38 +64,16 @@ export default function ManageWorkersScreen({ navigation }) {
         setSaving(true);
         try {
             if (editingWorker) {
-                // Update
                 await fetch(`${SUPABASE_URL}/rest/v1/workers?id=eq.${editingWorker.id}`, {
                     method: 'PATCH',
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json',
-                        Prefer: 'return=minimal',
-                    },
-                    body: JSON.stringify({
-                        name: form.name.trim(),
-                        role: form.role.trim(),
-                        email: form.email.trim(),
-                        phone: form.phone.trim(),
-                    }),
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({ name: form.name.trim(), role: form.role.trim(), email: form.email.trim(), phone: form.phone.trim() }),
                 });
             } else {
-                // Insert
                 await fetch(`${SUPABASE_URL}/rest/v1/workers`, {
                     method: 'POST',
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json',
-                        Prefer: 'return=minimal',
-                    },
-                    body: JSON.stringify({
-                        name: form.name.trim(),
-                        role: form.role.trim(),
-                        email: form.email.trim(),
-                        phone: form.phone.trim(),
-                    }),
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({ name: form.name.trim(), role: form.role.trim(), email: form.email.trim(), phone: form.phone.trim() }),
                 });
             }
             closeModal();
@@ -117,11 +96,7 @@ export default function ManageWorkersScreen({ navigation }) {
                         try {
                             await fetch(`${SUPABASE_URL}/rest/v1/workers?id=eq.${worker.id}`, {
                                 method: 'DELETE',
-                                headers: {
-                                    apikey: SUPABASE_KEY,
-                                    Authorization: `Bearer ${SUPABASE_KEY}`,
-                                    Prefer: 'return=minimal',
-                                },
+                                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: 'return=minimal' },
                             });
                             setWorkers(prev => prev.filter(w => w.id !== worker.id));
                         } catch (e) {
@@ -141,7 +116,6 @@ export default function ManageWorkersScreen({ navigation }) {
 
     const content = (
         <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-            {/* Header */}
             <View style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Workers</Text>
                 <Text style={[styles.headerSub, { color: colors.subtext }]}>{workers.length} team member{workers.length !== 1 ? 's' : ''}</Text>
@@ -151,15 +125,14 @@ export default function ManageWorkersScreen({ navigation }) {
                 <ActivityIndicator color="#007AFF" style={{ marginTop: 48 }} />
             ) : (
                 <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-                    {/* Add Button */}
                     <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-                        <Text style={styles.addBtnText}>＋ Add Worker</Text>
+                        <Plus size={18} color="#fff" />
+                        <Text style={styles.addBtnText}>Add Worker</Text>
                     </TouchableOpacity>
 
-                    {/* Workers List */}
                     {workers.length === 0 ? (
                         <View style={styles.empty}>
-                            <Text style={styles.emptyEmoji}>👥</Text>
+                            <Users size={48} color="#C7C7CC" />
                             <Text style={[styles.emptyTitle, { color: colors.text }]}>No workers yet</Text>
                             <Text style={[styles.emptySub, { color: colors.subtext }]}>Tap Add Worker to get started</Text>
                         </View>
@@ -174,15 +147,21 @@ export default function ManageWorkersScreen({ navigation }) {
                                         <Text style={[styles.workerName, { color: colors.text }]}>{w.name}</Text>
                                         {w.role ? <Text style={styles.workerRole}>{w.role}</Text> : null}
                                         {w.email ? (
-                                            <Text style={styles.workerDetail}>✉️ {w.email}</Text>
+                                            <View style={styles.detailRow}>
+                                                <Mail size={11} color="#8E8E93" />
+                                                <Text style={styles.workerDetail}>{w.email}</Text>
+                                            </View>
                                         ) : null}
                                         {w.phone ? (
-                                            <Text style={styles.workerDetail}>📞 {w.phone}</Text>
+                                            <View style={styles.detailRow}>
+                                                <Phone size={11} color="#8E8E93" />
+                                                <Text style={styles.workerDetail}>{w.phone}</Text>
+                                            </View>
                                         ) : null}
                                     </View>
                                     <View style={styles.workerActions}>
                                         <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(w)}>
-                                            <Text style={styles.editBtnText}>Edit</Text>
+                                            <Pencil size={13} color="#007AFF" />
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.deleteBtn}
@@ -190,8 +169,7 @@ export default function ManageWorkersScreen({ navigation }) {
                                             disabled={deletingId === w.id}>
                                             {deletingId === w.id
                                                 ? <ActivityIndicator size="small" color="#FF3B30" />
-                                                : <Text style={styles.deleteBtnText}>🗑</Text>
-                                            }
+                                                : <Trash2 size={15} color="#FF3B30" />}
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -201,60 +179,36 @@ export default function ManageWorkersScreen({ navigation }) {
                 </ScrollView>
             )}
 
-            {/* Add / Edit Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
-                <KeyboardAvoidingView
-                    style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                     <View style={styles.modalOverlay}>
                         <View style={[styles.modalBox, { backgroundColor: colors.card }]}>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                {editingWorker ? '✏️ Edit Worker' : '➕ Add Worker'}
+                                {editingWorker ? 'Edit Worker' : 'Add Worker'}
                             </Text>
 
-                            <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Name *</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
-                                placeholder="Full name"
-                                placeholderTextColor="#8E8E93"
-                                value={form.name}
-                                onChangeText={v => setForm(f => ({ ...f, name: v }))}
-                            />
-
-                            <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Role</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
-                                placeholder="e.g. Youth Worker, Senior Youth Worker"
-                                placeholderTextColor="#8E8E93"
-                                value={form.role}
-                                onChangeText={v => setForm(f => ({ ...f, role: v }))}
-                            />
-
-                            <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Email</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
-                                placeholder="email@reachout.sg"
-                                placeholderTextColor="#8E8E93"
-                                value={form.email}
-                                onChangeText={v => setForm(f => ({ ...f, email: v }))}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                            />
-
-                            <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Phone</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
-                                placeholder="+65 9123 4567"
-                                placeholderTextColor="#8E8E93"
-                                value={form.phone}
-                                onChangeText={v => setForm(f => ({ ...f, phone: v }))}
-                                keyboardType="phone-pad"
-                            />
+                            {[
+                                { label: 'Name *', key: 'name', placeholder: 'Full name', keyboard: 'default' },
+                                { label: 'Role', key: 'role', placeholder: 'e.g. Youth Worker', keyboard: 'default' },
+                                { label: 'Email', key: 'email', placeholder: 'email@reachout.sg', keyboard: 'email-address' },
+                                { label: 'Phone', key: 'phone', placeholder: '+65 9123 4567', keyboard: 'phone-pad' },
+                            ].map(({ label, key, placeholder, keyboard }) => (
+                                <View key={key}>
+                                    <Text style={[styles.fieldLabel, { color: colors.subtext }]}>{label}</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
+                                        placeholder={placeholder}
+                                        placeholderTextColor="#8E8E93"
+                                        value={form[key]}
+                                        onChangeText={v => setForm(f => ({ ...f, [key]: v }))}
+                                        autoCapitalize={keyboard === 'email-address' ? 'none' : 'words'}
+                                        keyboardType={keyboard}
+                                    />
+                                </View>
+                            ))}
 
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={[styles.cancelBtn, { backgroundColor: colors.input }]}
-                                    onPress={closeModal}>
+                                <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.input }]} onPress={closeModal}>
                                     <Text style={styles.cancelBtnText}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -263,8 +217,7 @@ export default function ManageWorkersScreen({ navigation }) {
                                     disabled={!form.name.trim() || saving}>
                                     {saving
                                         ? <ActivityIndicator color="#fff" size="small" />
-                                        : <Text style={styles.saveBtnText}>{editingWorker ? 'Save Changes' : 'Add Worker'}</Text>
-                                    }
+                                        : <Text style={styles.saveBtnText}>{editingWorker ? 'Save Changes' : 'Add Worker'}</Text>}
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -276,11 +229,7 @@ export default function ManageWorkersScreen({ navigation }) {
 
     if (isDark) {
         return (
-            <LinearGradient
-                colors={['#0D0D1A', '#1A1A2E', '#16213E']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ flex: 1 }}>
+            <LinearGradient colors={['#0D0D1A', '#1A1A2E', '#16213E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
                 {content}
             </LinearGradient>
         );
@@ -293,10 +242,9 @@ const styles = StyleSheet.create({
     header: { padding: 20, paddingTop: 16, borderBottomWidth: 0.5 },
     headerTitle: { fontSize: 24, fontWeight: '700' },
     headerSub: { fontSize: 13, marginTop: 2 },
-    addBtn: { backgroundColor: '#007AFF', borderRadius: 14, padding: 14, alignItems: 'center', marginBottom: 16 },
+    addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 14, padding: 14, marginBottom: 16 },
     addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    empty: { alignItems: 'center', marginTop: 60 },
-    emptyEmoji: { fontSize: 48, marginBottom: 12 },
+    empty: { alignItems: 'center', marginTop: 60, gap: 12 },
     emptyTitle: { fontSize: 17, fontWeight: '600' },
     emptySub: { fontSize: 14, marginTop: 4 },
     workerCard: { borderRadius: 16, padding: 14, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
@@ -305,12 +253,11 @@ const styles = StyleSheet.create({
     workerAvatarText: { fontSize: 15, fontWeight: '700', color: '#007AFF' },
     workerName: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
     workerRole: { fontSize: 13, color: '#8E8E93', marginBottom: 4 },
-    workerDetail: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
-    workerActions: { flexDirection: 'column', gap: 6, alignItems: 'flex-end' },
-    editBtn: { backgroundColor: '#E5F1FF', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
-    editBtnText: { color: '#007AFF', fontSize: 13, fontWeight: '600' },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+    workerDetail: { fontSize: 12, color: '#8E8E93' },
+    workerActions: { flexDirection: 'column', gap: 8, alignItems: 'center' },
+    editBtn: { backgroundColor: '#E5F1FF', borderRadius: 8, padding: 7 },
     deleteBtn: { padding: 4 },
-    deleteBtnText: { fontSize: 16 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalBox: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
     modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20 },

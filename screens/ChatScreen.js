@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 
-const RAILWAY_URL = 'https://reachout-bot-production.up.railway.app';
+const BOT_URL = 'https://reachout-bot-production.up.railway.app';
 const API_KEY = 'reachout123';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const ANTHROPIC_KEY = 'YOUR_ANTHROPIC_KEY_HERE'; // not needed — translation done on bot side
 
 export default function ChatScreen({ route }) {
     const { conversation, worker } = route.params;
@@ -13,9 +12,8 @@ export default function ChatScreen({ route }) {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [translations, setTranslations] = useState({});
-    const [translating, setTranslating] = useState({});
+    const translatingRef = useRef({});
     const flatListRef = useRef(null);
-    const preferredLang = conversation.preferred_language;
 
     useEffect(() => {
         fetchMessages();
@@ -42,38 +40,35 @@ export default function ChatScreen({ route }) {
     }
 
     async function translateMessage(messageId, content) {
-        if (translations[messageId] || translating[messageId]) return;
-        setTranslating(prev => ({ ...prev, [messageId]: true }));
+        if (translatingRef.current[messageId]) return;
+        translatingRef.current[messageId] = true;
+        setTranslations(prev => ({ ...prev, [messageId]: '...' }));
         try {
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
+            const res = await fetch(`${BOT_URL}/translate`, {
                 method: 'POST',
                 headers: {
                     'x-api-key': API_KEY,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    model: 'claude-haiku-4-5',
-                    max_tokens: 300,
-                    system: 'Translate the given text to English. Return ONLY the translated text, nothing else. If already in English, return as is.',
-                    messages: [{ role: 'user', content }],
-                }),
+                body: JSON.stringify({ text: content }),
             });
             const data = await res.json();
-            const translated = data?.content?.[0]?.text;
+            const translated = data?.translated;
             if (translated) {
                 setTranslations(prev => ({ ...prev, [messageId]: translated }));
             }
         } catch (e) {
             console.error('Translation error:', e);
+            setTranslations(prev => ({ ...prev, [messageId]: null }));
         }
-        setTranslating(prev => ({ ...prev, [messageId]: false }));
+        translatingRef.current[messageId] = false;
     }
 
     async function sendReply() {
         if (!text.trim()) return;
         setSending(true);
         try {
-            await fetch(`${RAILWAY_URL}/reply`, {
+            await fetch(`${BOT_URL}/reply`, {
                 method: 'POST',
                 headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -91,12 +86,7 @@ export default function ChatScreen({ route }) {
     function renderMessage({ item }) {
         const isYouth = item.role === 'user';
         const isWorker = item.content?.startsWith('[Worker');
-        const isNonEnglish = preferredLang && preferredLang !== 'English';
-
-        // Auto-translate youth messages if non-English
-        if (isYouth && isNonEnglish && !translations[item.id] && !translating[item.id]) {
-            translateMessage(item.id, item.content);
-        }
+        const hasTranslation = translations[item.id];
 
         return (
             <View style={[styles.bubbleWrapper, isYouth ? styles.leftWrapper : styles.rightWrapper]}>
@@ -118,13 +108,23 @@ export default function ChatScreen({ route }) {
                         </Text>
                     </View>
 
-                    {/* Translation bubble for youth messages */}
-                    {isYouth && isNonEnglish && (
-                        <View style={styles.translationBubble}>
-                            <Text style={styles.translationLabel}>🌐 {preferredLang} → English</Text>
-                            <Text style={styles.translationText}>
-                                {translating[item.id] ? 'Translating...' : (translations[item.id] || '')}
-                            </Text>
+                    {isYouth && (
+                        <View style={styles.translateRow}>
+                            {!hasTranslation ? (
+                                <TouchableOpacity
+                                    onPress={() => translateMessage(item.id, item.content)}
+                                    style={styles.translateBtn}
+                                    disabled={translatingRef.current[item.id]}
+                                >
+                                    <Text style={styles.translateBtnText}>
+                                        {translations[item.id] === '...' ? 'Translating...' : '🌐 Translate'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ) : hasTranslation !== '...' ? (
+                                <Text style={styles.translationText}>🌐 {hasTranslation}</Text>
+                            ) : (
+                                <Text style={styles.translatingText}>Translating...</Text>
+                            )}
                         </View>
                     )}
                 </View>
@@ -133,39 +133,26 @@ export default function ChatScreen({ route }) {
     }
 
     return (
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={styles.statusBar}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>
-                    You are now in control — bot is paused
-                    {preferredLang && preferredLang !== 'English' ? `  •  🌐 Youth speaks ${preferredLang}` : ''}
-                </Text>
-            </View>
-
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
             <FlatList
                 ref={flatListRef}
                 data={messages}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item.id?.toString()}
                 renderItem={renderMessage}
-                onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-                style={styles.messageList}
-                contentContainerStyle={{ padding: 16 }}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
             />
-
             <View style={styles.inputRow}>
                 <TextInput
                     style={styles.input}
-                    placeholder={preferredLang && preferredLang !== 'English' ? `Message (auto-translates to ${preferredLang})...` : 'Message...'}
-                    placeholderTextColor="#8E8E93"
                     value={text}
                     onChangeText={setText}
+                    placeholder="Type a message..."
+                    placeholderTextColor="#999"
                     multiline
                 />
-                <TouchableOpacity
-                    style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
-                    onPress={sendReply}
-                    disabled={sending || !text.trim()}>
-                    <Text style={styles.sendText}>↑</Text>
+                <TouchableOpacity style={styles.sendBtn} onPress={sendReply} disabled={sending}>
+                    <Text style={styles.sendText}>{sending ? '...' : 'Send'}</Text>
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>
@@ -174,29 +161,27 @@ export default function ChatScreen({ route }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F2F2F7' },
-    statusBar: { backgroundColor: '#E5F1FF', flexDirection: 'row', alignItems: 'center', padding: 10, paddingHorizontal: 16 },
-    statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#34C759', marginRight: 8 },
-    statusText: { fontSize: 12, color: '#007AFF', fontWeight: '500', flex: 1 },
-    messageList: { flex: 1 },
     bubbleWrapper: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end' },
     leftWrapper: { justifyContent: 'flex-start' },
     rightWrapper: { justifyContent: 'flex-end' },
-    avatarSmall: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E5F1FF', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-    avatarSmallText: { fontSize: 12, fontWeight: '700', color: '#007AFF' },
-    bubble: { borderRadius: 18, padding: 12 },
-    youthBubble: { backgroundColor: '#fff', borderBottomLeftRadius: 4 },
-    botBubble: { backgroundColor: '#007AFF', borderBottomRightRadius: 4 },
-    workerBubble: { backgroundColor: '#34C759', borderBottomRightRadius: 4 },
-    bubbleLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 4, fontWeight: '600' },
-    youthText: { color: '#1C1C1E', fontSize: 15 },
-    botText: { color: '#fff', fontSize: 15 },
-    bubbleTime: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 4, textAlign: 'right' },
-    translationBubble: { backgroundColor: '#F0F7FF', borderRadius: 10, padding: 8, marginTop: 4, borderLeftWidth: 3, borderLeftColor: '#007AFF' },
-    translationLabel: { fontSize: 10, color: '#007AFF', fontWeight: '600', marginBottom: 2 },
-    translationText: { fontSize: 13, color: '#3C3C43' },
-    inputRow: { flexDirection: 'row', padding: 12, backgroundColor: '#fff', borderTopWidth: 0.5, borderTopColor: '#E5E5EA', alignItems: 'flex-end' },
-    input: { flex: 1, backgroundColor: '#F2F2F7', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: '#1C1C1E', maxHeight: 100 },
-    sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-    sendBtnDisabled: { backgroundColor: '#E5E5EA' },
-    sendText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+    avatarSmall: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#007AFF', alignItems: 'center', justifyContent: 'center', marginRight: 6 },
+    avatarSmallText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    bubble: { borderRadius: 16, padding: 10, marginBottom: 2 },
+    youthBubble: { backgroundColor: '#fff', borderTopLeftRadius: 4 },
+    botBubble: { backgroundColor: '#007AFF', borderTopRightRadius: 4 },
+    workerBubble: { backgroundColor: '#34C759', borderTopRightRadius: 4 },
+    bubbleLabel: { fontSize: 10, color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
+    bubbleText: { fontSize: 15, lineHeight: 20 },
+    youthText: { color: '#1C1C1E' },
+    botText: { color: '#fff' },
+    bubbleTime: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 4, alignSelf: 'flex-end' },
+    translateRow: { marginTop: 3, marginLeft: 2 },
+    translateBtn: { alignSelf: 'flex-start', backgroundColor: '#007AFF', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+    translateBtnText: { color: '#fff', fontSize: 11, fontWeight: '500' },
+    translationText: { fontSize: 12, color: '#007AFF', fontStyle: 'italic' },
+    translatingText: { fontSize: 11, color: '#999' },
+    inputRow: { flexDirection: 'row', padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E5EA' },
+    input: { flex: 1, backgroundColor: '#F2F2F7', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, fontSize: 15, maxHeight: 100, color: '#1C1C1E' },
+    sendBtn: { marginLeft: 8, backgroundColor: '#007AFF', borderRadius: 20, paddingHorizontal: 16, justifyContent: 'center' },
+    sendText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 });
