@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { supabase } from './supabase';
@@ -14,6 +15,7 @@ import ChatScreen from './screens/ChatScreen';
 import YouthProfileScreen from './screens/YouthProfileScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import MyCasesScreen from './screens/MyCasesScreen';
+import SocialScreen from './screens/SocialScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -21,9 +23,9 @@ const Stack = createStackNavigator();
 const TABS = [
   { name: 'Dashboard', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
   { name: 'MyCases', label: 'My Cases', icon: 'people', iconOutline: 'people-outline' },
+  { name: 'Social', label: 'Analysis', icon: 'analytics', iconOutline: 'analytics-outline' },
   { name: 'Profile', label: 'Profile', icon: 'person', iconOutline: 'person-outline' },
 ];
-
 function BubbleTabBar({ state, descriptors, navigation, isDark }) {
   const bgColor = isDark ? '#12122A' : '#FFFFFF';
   const bubbleColor = isDark ? '#1E1E3F' : '#EEF4FF';
@@ -101,6 +103,9 @@ function MainTabs({ worker }) {
             <Tab.Screen name="MyCases">
               {p => <MyCasesScreen {...p} worker={worker} />}
             </Tab.Screen>
+            <Tab.Screen name="Social">
+              {p => <SocialScreen {...p} worker={worker} />}
+            </Tab.Screen>
             <Tab.Screen name="Profile">
               {p => <ProfileScreen {...p} worker={worker} />}
             </Tab.Screen>
@@ -134,6 +139,9 @@ function MainTabs({ worker }) {
 }
 
 function PhoneShell({ children }) {
+  if (Platform.OS !== 'web') {
+    return children;
+  }
   return (
     <View style={shell.outer}>
       <View style={shell.phone}>
@@ -162,29 +170,33 @@ export default function App() {
   }, []);
 
   if (loading) return (
-    <PhoneShell>
-      <View style={styles.center}>
-        <Text style={styles.text}>Loading...</Text>
-      </View>
-    </PhoneShell>
+    <SafeAreaProvider>
+      <PhoneShell>
+        <View style={styles.center}>
+          <Text style={styles.text}>Loading...</Text>
+        </View>
+      </PhoneShell>
+    </SafeAreaProvider>
   );
 
   return (
-    <ThemeProvider>
-      <PhoneShell>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {!worker ? (
-              <Stack.Screen name="Login" component={LoginScreen} />
-            ) : (
-              <Stack.Screen name="Main">
-                {props => <MainTabs {...props} worker={worker} />}
-              </Stack.Screen>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </PhoneShell>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <PhoneShell>
+          <NavigationContainer>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              {!worker ? (
+                <Stack.Screen name="Login" component={LoginScreen} />
+              ) : (
+                <Stack.Screen name="Main">
+                  {props => <MainTabs {...props} worker={worker} />}
+                </Stack.Screen>
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </PhoneShell>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

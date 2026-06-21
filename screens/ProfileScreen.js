@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Switch, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../supabase';
@@ -28,18 +29,11 @@ export default function ProfileScreen({ worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}&limit=1`,
-                {
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`,
-                    },
-                }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
             );
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) setProfile(data[0]);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     }
 
     function openEdit() {
@@ -54,31 +48,19 @@ export default function ProfileScreen({ worker }) {
             if (profile) {
                 await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}`, {
                     method: 'PATCH',
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json',
-                        Prefer: 'return=minimal',
-                    },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ name: form.name.trim(), phone: form.phone.trim() }),
                 });
             } else {
                 await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles`, {
                     method: 'POST',
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json',
-                        Prefer: 'return=minimal',
-                    },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ email: worker.email, name: form.name.trim(), phone: form.phone.trim() }),
                 });
             }
             await fetchProfile();
             setShowEditModal(false);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
         setSaving(false);
     }
 
@@ -109,18 +91,11 @@ export default function ProfileScreen({ worker }) {
 
             await fetch(url, {
                 method,
-                headers: {
-                    apikey: SUPABASE_KEY,
-                    Authorization: `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json',
-                    Prefer: 'return=minimal',
-                },
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body,
             });
             await fetchProfile();
-        } catch (e) {
-            console.error('Photo save error:', e);
-        }
+        } catch (e) { console.error('Photo save error:', e); }
         setUploadingPhoto(false);
     }
 
@@ -134,11 +109,11 @@ export default function ProfileScreen({ worker }) {
 
     const content = (
         <View style={{ flex: 1 }}>
-            <ScrollView style={{ flex: 1, backgroundColor: 'transparent' }}>
-                <View style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
-                    <Image source={require('../assets/scs-logo.png')} style={styles.logo} resizeMode="contain" />
-                </View>
+            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+                <Image source={require('../assets/scs-logo.png')} style={styles.logo} resizeMode="contain" />
+            </SafeAreaView>
 
+            <ScrollView style={{ flex: 1, backgroundColor: 'transparent' }}>
                 <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
                     <TouchableOpacity onPress={pickAndUploadPhoto} disabled={uploadingPhoto} style={styles.avatarWrapper}>
                         {photoSource ? (

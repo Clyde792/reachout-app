@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { User, Smartphone, FileText, MessageCircle, Search, AlertTriangle, Trash2, Save, ArrowRight, ArrowLeft, CheckCircle, Users } from 'lucide-react-native';
+import { User, Smartphone, FileText, MessageCircle, Search, AlertTriangle, Trash2, Save, ArrowRight, ArrowLeft, CheckCircle, Users, UserPlus } from 'lucide-react-native';
 
 const RAILWAY_URL = 'https://reachout-bot-production.up.railway.app';
 const API_KEY = 'reachout123';
@@ -16,7 +16,8 @@ const WORKERS = [
 ];
 
 export default function YouthProfileScreen({ route, navigation }) {
-    const { conversation, worker } = route.params;
+    const { conversation, worker, limitedView } = route.params;
+    const [isLimited, setIsLimited] = useState(!!limitedView);
     const { colors, isDark } = useTheme();
 
     const [activeTab, setActiveTab] = useState('profile');
@@ -129,6 +130,19 @@ export default function YouthProfileScreen({ route, navigation }) {
         } catch (e) { setTransferring(false); console.error(e); }
     }
 
+    async function takeCase() {
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${conversation.chat_id}`, {
+                method: 'PATCH',
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ assigned_worker: worker?.email }),
+            });
+            setIsLimited(false);
+        } catch (e) {
+            console.error('Take case error:', e);
+        }
+    }
+
     function getDaysWithOrg() {
         if (!conversation.started_at) return 'Unknown';
         const days = Math.floor((Date.now() - new Date(conversation.started_at)) / (1000 * 60 * 60 * 24));
@@ -150,7 +164,6 @@ export default function YouthProfileScreen({ route, navigation }) {
 
     const tabs = [
         { key: 'profile', label: 'Profile', Icon: User },
-        { key: 'social', label: 'Social', Icon: Smartphone },
         { key: 'notes', label: 'Notes', Icon: FileText },
         { key: 'handover', label: 'Handover', Icon: Users },
     ];
@@ -174,17 +187,19 @@ export default function YouthProfileScreen({ route, navigation }) {
             </View>
 
             {/* Tabs */}
-            <View style={[styles.tabBar, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
-                {tabs.map(({ key, label, Icon }) => (
-                    <TouchableOpacity
-                        key={key}
-                        style={[styles.tab, activeTab === key && styles.tabActive]}
-                        onPress={() => setActiveTab(key)}>
-                        <Icon size={16} color={activeTab === key ? '#007AFF' : '#8E8E93'} />
-                        <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+            {!isLimited && (
+                <View style={[styles.tabBar, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+                    {tabs.map(({ key, label, Icon }) => (
+                        <TouchableOpacity
+                            key={key}
+                            style={[styles.tab, activeTab === key && styles.tabActive]}
+                            onPress={() => setActiveTab(key)}>
+                            <Icon size={16} color={activeTab === key ? '#007AFF' : '#8E8E93'} />
+                            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
 
             {/* Profile Tab */}
             {activeTab === 'profile' && (
@@ -223,92 +238,18 @@ export default function YouthProfileScreen({ route, navigation }) {
                             ))}
                         </View>
                     ) : null}
-
-                    <TouchableOpacity
-                        style={styles.chatButton}
-                        onPress={() => navigation.navigate('Chat', { conversation, worker })}>
-                        <MessageCircle size={18} color="#fff" />
-                        <Text style={styles.chatButtonText}>Start Chatting</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            )}
-
-            {/* Social Tab */}
-            {activeTab === 'social' && (
-                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-                    <Text style={[styles.socialTabHint, { color: colors.subtext }]}>
-                        Enter the youth's public Instagram username to analyse their recent posts for distress signals.
-                    </Text>
-                    <View style={[styles.card, { backgroundColor: colors.card }]}>
-                        <TextInput
-                            style={[styles.socialInput, { backgroundColor: colors.input, color: colors.text }]}
-                            placeholder="e.g. username (without @)"
-                            placeholderTextColor="#8E8E93"
-                            value={igUsername}
-                            onChangeText={setIgUsername}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
-                        <TouchableOpacity
-                            style={[styles.analyseBtn, analysing && styles.analyseBtnDisabled]}
-                            onPress={analyseInstagram}
-                            disabled={analysing}>
-                            {analysing
-                                ? <ActivityIndicator size="small" color="#fff" />
-                                : <Search size={15} color="#fff" />}
-                            <Text style={styles.analyseBtnText}>{analysing ? 'Analysing...' : 'Analyse Account'}</Text>
+                    {isLimited ? (
+                        <TouchableOpacity style={styles.chatButton} onPress={takeCase}>
+                            <UserPlus size={18} color="#fff" />
+                            <Text style={styles.chatButtonText}>Take Case</Text>
                         </TouchableOpacity>
-                    </View>
-
-                    {socialResult && !socialResult.error && (
-                        <View style={[styles.card, { backgroundColor: colors.card, marginTop: 16 }]}>
-                            <View style={styles.socialRiskRow}>
-                                <Text style={[styles.socialRiskLabel, { color: colors.text }]}>Overall Risk</Text>
-                                <View style={[styles.overallBadge, { backgroundColor: getRiskColor(socialResult.risk_level) }]}>
-                                    <Text style={styles.overallBadgeText}>{(socialResult.risk_level || '').toUpperCase()}</Text>
-                                </View>
-                            </View>
-                            {[
-                                { label: 'Caption Risk', value: socialResult.caption_risk, color: '#FF3B30' },
-                                { label: 'Hashtag Risk', value: socialResult.hashtag_risk, color: '#FF9500' },
-                                { label: 'Frequency Risk', value: socialResult.frequency_risk, color: '#007AFF' },
-                            ].map(({ label, value, color }) => (
-                                <View key={label} style={styles.scoreRow}>
-                                    <Text style={styles.scoreLabel}>{label}</Text>
-                                    <View style={styles.scoreTrack}>
-                                        <View style={[styles.scoreFill, { width: `${value || 0}%`, backgroundColor: color }]} />
-                                    </View>
-                                    <Text style={styles.scoreValue}>{value || 0}%</Text>
-                                </View>
-                            ))}
-                            {socialResult.flags?.length > 0 && (
-                                <View style={styles.flagsBox}>
-                                    <View style={styles.flagsHeader}>
-                                        <AlertTriangle size={13} color="#FF9500" />
-                                        <Text style={styles.flagsTitle}>Flags detected</Text>
-                                    </View>
-                                    {socialResult.flags.map((flag, i) => (
-                                        <Text key={i} style={styles.flagItem}>• {flag}</Text>
-                                    ))}
-                                </View>
-                            )}
-                            {socialResult.summary && (
-                                <Text style={[styles.socialSummary, { color: colors.text }]}>{socialResult.summary}</Text>
-                            )}
-                            <Text style={styles.socialMeta}>
-                                {socialResult.post_count} posts analysed · Last post {socialResult.days_since_last_post ?? '?'} days ago
-                            </Text>
-                        </View>
-                    )}
-
-                    {socialResult?.error && (
-                        <View style={[styles.errorBox, { marginTop: 16 }]}>
-                            <AlertTriangle size={14} color="#FF3B30" />
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.socialError}>{socialResult.error}</Text>
-                                <Text style={styles.errorHint}>The account may be private or the username is incorrect.</Text>
-                            </View>
-                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.chatButton}
+                            onPress={() => navigation.navigate('Chat', { conversation, worker })}>
+                            <MessageCircle size={18} color="#fff" />
+                            <Text style={styles.chatButtonText}>Start Chatting</Text>
+                        </TouchableOpacity>
                     )}
                 </ScrollView>
             )}

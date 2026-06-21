@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { AlertTriangle, Clock, ClipboardList } from 'lucide-react-native';
@@ -12,31 +14,40 @@ export default function MyCasesScreen({ navigation, worker }) {
     const [refreshing, setRefreshing] = useState(false);
     const { colors, isDark } = useTheme();
 
-    useEffect(() => {
-        fetchMyCases();
-    }, []);
-
+    useFocusEffect(
+        useCallback(() => {
+            fetchMyCases();
+        }, [])
+    );
     async function fetchMyCases() {
         setRefreshing(true);
         try {
             const email = worker?.email;
             const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/conversations?select=*&assigned_worker=eq.${encodeURIComponent(email)}&order=risk_order.desc.nullslast,last_message_time.desc.nullslast`,
-                {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    },
-                }
+                `${SUPABASE_URL}/rest/v1/conversations?select=*&assigned_worker=eq.${encodeURIComponent(email)}&order=last_message_time.desc.nullslast`,
+                { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
             );
             const data = await res.json();
-            setCases(Array.isArray(data) ? data : []);
+            const sorted = Array.isArray(data) ? sortByRisk(data) : [];
+            console.log('My Cases sorted order:', sorted.map(c => `${c.username}: ${c.risk_level} crisis=${c.crisis}`));
+            setCases(sorted);
         } catch (e) {
             console.error(e);
         }
         setRefreshing(false);
     }
 
+    function sortByRisk(list) {
+        const riskScore = { high: 3, medium: 2, low: 1 };
+        return [...list].sort((a, b) => {
+            const aCrisis = a.crisis ? 1 : 0;
+            const bCrisis = b.crisis ? 1 : 0;
+            if (aCrisis !== bCrisis) return bCrisis - aCrisis;
+            const aScore = riskScore[a.risk_level] || 0;
+            const bScore = riskScore[b.risk_level] || 0;
+            return bScore - aScore;
+        });
+    }
     function getRiskColor(level) {
         if (level === 'high') return '#FF3B30';
         if (level === 'medium') return '#FF9500';
@@ -111,10 +122,10 @@ export default function MyCasesScreen({ navigation, worker }) {
 
     const content = (
         <View style={{ flex: 1 }}>
-            <View style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>My Cases</Text>
                 <Text style={styles.headerSub}>{cases.length} youth{cases.length !== 1 ? 's' : ''} assigned to you</Text>
-            </View>
+            </SafeAreaView>
 
             <FlatList
                 data={cases}
