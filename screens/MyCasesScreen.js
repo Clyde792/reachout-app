@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { AlertTriangle, Clock, ClipboardList } from 'lucide-react-native';
+import { AlertTriangle, Clock, ClipboardList, Repeat, Check, X } from 'lucide-react-native';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -12,13 +12,55 @@ const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 export default function MyCasesScreen({ navigation, worker }) {
     const [cases, setCases] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [sentRequests, setSentRequests] = useState([]);
+    const [allSentHistory, setAllSentHistory] = useState([]);
+    const [respondingId, setRespondingId] = useState(null);
+    const [activeTab, setActiveTab] = useState('active');
+    const [workerNames, setWorkerNames] = useState({});
     const { colors, isDark } = useTheme();
 
     useFocusEffect(
         useCallback(() => {
             fetchMyCases();
+            fetchPendingRequests();
+            fetchSentRequests();
+            fetchAllSentHistory();
+            fetchWorkerNames();
         }, [])
     );
+
+    async function fetchWorkerNames() {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/worker_profiles?select=email,name`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                const map = {};
+                data.forEach(w => { map[w.email] = w.name; });
+                setWorkerNames(map);
+            }
+        } catch (e) {
+            console.error('Fetch worker names error:', e);
+        }
+    }
+
+    async function attachConversations(data) {
+        if (!Array.isArray(data) || data.length === 0) return [];
+        const chatIds = [...new Set(data.map(r => r.chat_id))];
+        const convRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/conversations?chat_id=in.(${chatIds.join(',')})&select=chat_id,username,display_name`,
+            { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+        );
+        const convData = await convRes.json();
+        return data.map(req => ({
+            ...req,
+            conversation: Array.isArray(convData) ? convData.find(c => c.chat_id === req.chat_id) : null,
+        }));
+    }
+
     async function fetchMyCases() {
         setRefreshing(true);
         try {
@@ -29,7 +71,6 @@ export default function MyCasesScreen({ navigation, worker }) {
             );
             const data = await res.json();
             const sorted = Array.isArray(data) ? sortByRisk(data) : [];
-            console.log('My Cases sorted order:', sorted.map(c => `${c.username}: ${c.risk_level} crisis=${c.crisis}`));
             setCases(sorted);
         } catch (e) {
             console.error(e);
@@ -48,6 +89,102 @@ export default function MyCasesScreen({ navigation, worker }) {
             return bScore - aScore;
         });
     }
+
+    async function fetchPendingRequests() {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/handover_requests?to_worker=eq.${encodeURIComponent(worker?.email)}&status=eq.pending&select=*&order=created_at.desc`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            const merged = await attachConversations(data);
+            setPendingRequests(merged);
+        } catch (e) {
+            console.error('Fetch pending requests error:', e);
+        }
+    }
+
+    async function fetchSentRequests() {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/handover_requests?from_worker=eq.${encodeURIComponent(worker?.email)}&status=eq.pending&select=*&order=created_at.desc`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            const merged = await attachConversations(data);
+            setSentRequests(merged);
+        } catch (e) {
+            console.error('Fetch sent requests error:', e);
+        }
+    }
+
+    async function fetchAllSentHistory() {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/case_history?worker_email=eq.${encodeURIComponent(worker?.email)}&select=*&order=created_at.desc`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            if (!Array.isArray(data) || data.length === 0) {
+                setAllSentHistory([]);
+                return;
+            }
+            const chatIds = [...new Set(data.map(r => r.chat_id))];
+            const convRes = await fetch(
+                `${SUPABASE_URL}/rest/v1/conversations?chat_id=in.(${chatIds.join(',')})&select=chat_id,username,display_name,risk_level,crisis,assigned_worker,mood_score,summary,suggested_action,snapshot,age,school,trust_level,engagement_level,started_at`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const convData = await convRes.json();
+            const merged = data.map(h => ({
+                ...h,
+                conversation: Array.isArray(convData) ? convData.find(c => c.chat_id === h.chat_id) : null,
+            }));
+            setAllSentHistory(merged);
+        } catch (e) {
+            console.error('Fetch sent history error:', e);
+        }
+    }
+
+    async function respondToRequest(request, accept) {
+        setRespondingId(request.id);
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/handover_requests?id=eq.${request.id}`, {
+                method: 'PATCH',
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ status: accept ? 'accepted' : 'declined', responded_at: new Date().toISOString() }),
+            });
+
+            if (accept) {
+                await fetch(`${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${request.chat_id}`, {
+                    method: 'PATCH',
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({
+                        assigned_worker: worker?.email,
+                        handover_from: request.from_worker,
+                        handover_at: new Date().toISOString(),
+                        previously_assigned_to: request.from_worker,
+                    }),
+                });
+
+                await fetch(`${SUPABASE_URL}/rest/v1/case_history`, {
+                    method: 'POST',
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({
+                        chat_id: request.chat_id,
+                        worker_email: request.from_worker,
+                        role: 'previous_worker',
+                    }),
+                });
+            }
+
+            await fetchPendingRequests();
+            await fetchMyCases();
+        } catch (e) {
+            console.error('Respond to request error:', e);
+        }
+        setRespondingId(null);
+    }
+
     function getRiskColor(level) {
         if (level === 'high') return '#FF3B30';
         if (level === 'medium') return '#FF9500';
@@ -127,21 +264,113 @@ export default function MyCasesScreen({ navigation, worker }) {
                 <Text style={styles.headerSub}>{cases.length} youth{cases.length !== 1 ? 's' : ''} assigned to you</Text>
             </SafeAreaView>
 
-            <FlatList
-                data={cases}
-                keyExtractor={item => String(item.chat_id)}
-                renderItem={renderItem}
-                style={{ flex: 1, backgroundColor: 'transparent' }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMyCases} tintColor="#007AFF" />}
-                ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <ClipboardList size={48} color="#C7C7CC" />
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>No cases yet</Text>
-                        <Text style={styles.emptySub}>Go to Home to claim unassigned youths</Text>
-                    </View>
-                }
-                contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
-            />
+            <View style={[styles.tabBar, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+                    onPress={() => setActiveTab('active')}>
+                    <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>Active</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'handedover' && styles.tabActive]}
+                    onPress={() => setActiveTab('handedover')}>
+                    <Text style={[styles.tabText, activeTab === 'handedover' && styles.tabTextActive]}>Handed Over</Text>
+                </TouchableOpacity>
+            </View>
+
+            {activeTab === 'active' ? (
+                <>
+                    {pendingRequests.length > 0 && (
+                        <View style={styles.requestsSection}>
+                            <View style={styles.requestsHeader}>
+                                <Repeat size={14} color="#007AFF" />
+                                <Text style={[styles.requestsTitle, { color: colors.text }]}>
+                                    Handover Request{pendingRequests.length !== 1 ? 's' : ''}
+                                </Text>
+                            </View>
+                            {pendingRequests.map(req => (
+                                <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.card }]}>
+                                    <View style={styles.requestInfo}>
+                                        <Text style={[styles.requestName, { color: colors.text }]}>
+                                            {req.conversation?.display_name || req.conversation?.username || 'Unknown youth'}
+                                        </Text>
+                                        <Text style={styles.requestFrom}>from {req.from_worker}</Text>
+                                        {req.note ? <Text style={[styles.requestNote, { color: colors.subtext }]}>"{req.note}"</Text> : null}
+                                    </View>
+                                    <View style={styles.requestActions}>
+                                        <TouchableOpacity
+                                            style={styles.declineBtn}
+                                            onPress={() => respondToRequest(req, false)}
+                                            disabled={respondingId === req.id}>
+                                            <X size={16} color="#FF3B30" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.acceptBtn}
+                                            onPress={() => respondToRequest(req, true)}
+                                            disabled={respondingId === req.id}>
+                                            {respondingId === req.id
+                                                ? <ActivityIndicator size="small" color="#fff" />
+                                                : <Check size={16} color="#fff" />}
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    <FlatList
+                        data={cases}
+                        keyExtractor={item => String(item.chat_id)}
+                        renderItem={renderItem}
+                        style={{ flex: 1, backgroundColor: 'transparent' }}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMyCases} tintColor="#007AFF" />}
+                        ListEmptyComponent={
+                            <View style={styles.empty}>
+                                <ClipboardList size={48} color="#C7C7CC" />
+                                <Text style={[styles.emptyTitle, { color: colors.text }]}>No cases yet</Text>
+                                <Text style={styles.emptySub}>Go to Home to claim unassigned youths</Text>
+                            </View>
+                        }
+                        contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
+                    />
+                </>
+            ) : (
+                <FlatList
+                    data={allSentHistory}
+                    keyExtractor={item => String(item.id)}
+                    renderItem={({ item }) => {
+                        const conv = item.conversation;
+                        const isHighRisk = conv?.risk_level === 'high' || conv?.crisis;
+                        return (
+                            <TouchableOpacity
+                                style={[styles.requestCard, { backgroundColor: colors.card, marginHorizontal: 16 }]}
+                                onPress={() => navigation.navigate('YouthProfile', { conversation: conv, worker, readOnly: true })}
+                                disabled={!conv}>
+                                <View style={styles.requestInfo}>
+                                    <Text style={[styles.requestName, { color: colors.text }]}>
+                                        {conv?.display_name || conv?.username || 'Unknown youth'}
+                                    </Text>
+                                    <Text style={styles.requestFrom}>now with {workerNames[conv?.assigned_worker] || conv?.assigned_worker || 'unassigned'}</Text>
+                                </View>
+                                <View style={[styles.riskBadge, { backgroundColor: getRiskColor(conv?.risk_level) }]}>
+                                    {isHighRisk && <AlertTriangle size={9} color="#fff" style={{ marginRight: 3 }} />}
+                                    <Text style={styles.riskText}>{(conv?.risk_level || 'unknown').toUpperCase()}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    }}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
+                    contentContainerStyle={{ paddingTop: 12, paddingBottom: 32, flexGrow: 1 }}
+                    ListEmptyComponent={
+                        <View style={styles.empty}>
+                            <Repeat size={48} color="#C7C7CC" />
+                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No handed over cases</Text>
+                            <Text style={styles.emptySub}>Cases you've handed over will appear here, with current status</Text>
+                        </View>
+                    }
+                />
+            )}
+
+
         </View>
     );
 
@@ -164,6 +393,26 @@ const styles = StyleSheet.create({
     header: { padding: 20, paddingTop: 16, borderBottomWidth: 0.5 },
     headerTitle: { fontSize: 24, fontWeight: '700' },
     headerSub: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
+    tabBar: { flexDirection: 'row', borderBottomWidth: 0.5 },
+    tab: { flex: 1, alignItems: 'center', paddingVertical: 10 },
+    tabActive: { borderBottomWidth: 2, borderBottomColor: '#007AFF' },
+    tabText: { fontSize: 13, color: '#8E8E93', fontWeight: '500' },
+    tabTextActive: { color: '#007AFF', fontWeight: '700' },
+    requestsSection: { paddingHorizontal: 16, paddingTop: 12 },
+    requestsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    requestsTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+    requestCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 12, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+    requestInfo: { flex: 1 },
+    requestName: { fontSize: 14, fontWeight: '700' },
+    requestFrom: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
+    requestNote: { fontSize: 12, marginTop: 4, fontStyle: 'italic' },
+    requestActions: { flexDirection: 'row', gap: 8 },
+    declineBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,59,48,0.1)', justifyContent: 'center', alignItems: 'center' },
+    acceptBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#34C759', justifyContent: 'center', alignItems: 'center' },
+    pendingBadge: { backgroundColor: 'rgba(255,149,0,0.1)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+    pendingBadgeText: { fontSize: 11, color: '#FF9500', fontWeight: '600' },
+    acceptedBadge: { backgroundColor: 'rgba(52,199,89,0.1)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+    acceptedBadgeText: { fontSize: 11, color: '#34C759', fontWeight: '600' },
     card: { marginHorizontal: 16, marginTop: 12, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     cardAlert: { borderColor: '#FF3B30', borderWidth: 1.5 },
     cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },

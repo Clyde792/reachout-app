@@ -12,14 +12,38 @@ export default function ChatScreen({ route }) {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [translations, setTranslations] = useState({});
+    const [handingBack, setHandingBack] = useState(false);
+    const [botActive, setBotActive] = useState(false);
     const translatingRef = useRef({});
     const flatListRef = useRef(null);
 
     useEffect(() => {
         fetchMessages();
         const interval = setInterval(fetchMessages, 5000);
-        return () => clearInterval(interval);
+        setWorkerActive(true); // pause bot while worker is in this chat
+        return () => {
+            clearInterval(interval);
+        };
     }, []);
+
+    async function setWorkerActive(active) {
+        try {
+            await fetch(`${BOT_URL}/worker-active`, {
+                method: 'POST',
+                headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId: conversation.chat_id, active }),
+            });
+            setBotActive(!active);
+        } catch (e) {
+            console.error('Worker active toggle error:', e);
+        }
+    }
+
+    async function handBackToBot() {
+        setHandingBack(true);
+        await setWorkerActive(false);
+        setHandingBack(false);
+    }
 
     async function fetchMessages() {
         try {
@@ -134,6 +158,19 @@ export default function ChatScreen({ route }) {
 
     return (
         <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+            <View style={styles.handoverBar}>
+                <Text style={styles.handoverText}>
+                    {botActive ? 'Bot is handling this chat' : "You're chatting live"}
+                </Text>
+                <TouchableOpacity
+                    style={[styles.handoverBtn, botActive && styles.handoverBtnDisabled]}
+                    onPress={handBackToBot}
+                    disabled={handingBack || botActive}>
+                    <Text style={styles.handoverBtnText}>
+                        {handingBack ? 'Handing back...' : botActive ? 'Bot Active' : 'Hand Back to Bot'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
             <FlatList
                 ref={flatListRef}
                 data={messages}
@@ -161,6 +198,11 @@ export default function ChatScreen({ route }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F2F2F7' },
+    handoverBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff', borderBottomWidth: 0.5, borderBottomColor: '#E5E5EA' },
+    handoverText: { fontSize: 12, color: '#8E8E93', flex: 1 },
+    handoverBtn: { backgroundColor: '#007AFF', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+    handoverBtnDisabled: { backgroundColor: '#C7C7CC' },
+    handoverBtnText: { color: '#fff', fontSize: 11, fontWeight: '600' },
     bubbleWrapper: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end' },
     leftWrapper: { justifyContent: 'flex-start' },
     rightWrapper: { justifyContent: 'flex-end' },

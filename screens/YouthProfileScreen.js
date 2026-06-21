@@ -2,21 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, TextInput, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { User, Smartphone, FileText, MessageCircle, Search, AlertTriangle, Trash2, Save, ArrowRight, ArrowLeft, CheckCircle, Users, UserPlus } from 'lucide-react-native';
+import { User, Smartphone, FileText, MessageCircle, Search, AlertTriangle, Trash2, Save, ArrowRight, ArrowLeft, CheckCircle, Users, UserPlus, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react-native';
 
 const RAILWAY_URL = 'https://reachout-bot-production.up.railway.app';
 const API_KEY = 'reachout123';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
-const WORKERS = [
-    { id: 'worker_sarah', name: 'Sarah Tan', role: 'Youth Worker' },
-    { id: 'worker_james', name: 'James Lim', role: 'Senior Youth Worker' },
-    { id: 'worker_priya', name: 'Priya Nair', role: 'Youth Worker' },
-];
-
 export default function YouthProfileScreen({ route, navigation }) {
-    const { conversation, worker, limitedView } = route.params;
+    const { conversation, worker, limitedView, readOnly } = route.params;
     const [isLimited, setIsLimited] = useState(!!limitedView);
     const { colors, isDark } = useTheme();
 
@@ -30,16 +24,54 @@ export default function YouthProfileScreen({ route, navigation }) {
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [transferring, setTransferring] = useState(false);
     const [transferred, setTransferred] = useState(false);
+    const [existingPendingRequest, setExistingPendingRequest] = useState(null);
+    const [checkingPending, setCheckingPending] = useState(false);
 
     const [notes, setNotes] = useState([]);
     const [newNote, setNewNote] = useState('');
     const [savingNote, setSavingNote] = useState(false);
     const [loadingNotes, setLoadingNotes] = useState(false);
-    const [deletingNoteId, setDeletingNoteId] = useState(null);
+    const [workersList, setWorkersList] = useState([]);
+    const [loadingWorkers, setLoadingWorkers] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'notes') fetchNotes();
+        if (activeTab === 'handover') {
+            fetchWorkers();
+            checkExistingPendingRequest();
+        }
     }, [activeTab]);
+
+    async function checkExistingPendingRequest() {
+        setCheckingPending(true);
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/handover_requests?chat_id=eq.${conversation.chat_id}&status=eq.pending&select=*&order=created_at.desc&limit=1`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            setExistingPendingRequest(Array.isArray(data) && data.length > 0 ? data[0] : null);
+        } catch (e) {
+            console.error('Check pending request error:', e);
+        }
+        setCheckingPending(false);
+    }
+
+    async function fetchWorkers() {
+        setLoadingWorkers(true);
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/worker_profiles?select=email,name,phone&order=name.asc`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            const mapped = Array.isArray(data) ? data.map(w => ({ id: w.email, name: w.name || w.email, role: 'Youth Worker', email: w.email })) : [];
+            setWorkersList(mapped);
+        } catch (e) {
+            console.error('Fetch workers error:', e);
+        }
+        setLoadingWorkers(false);
+    }
 
     async function fetchNotes() {
         setLoadingNotes(true);
@@ -113,17 +145,23 @@ export default function YouthProfileScreen({ route, navigation }) {
     async function confirmHandover() {
         setTransferring(true);
         try {
-            await fetch(`${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${conversation.chat_id}`, {
-                method: 'PATCH',
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/handover_requests`, {
+                method: 'POST',
                 headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body: JSON.stringify({
-                    assigned_worker: selectedWorker.id,
-                    assigned_worker_name: selectedWorker.name,
-                    handover_note: handoverNote,
-                    handover_from: worker?.name || 'Previous Worker',
-                    handover_at: new Date().toISOString(),
+                    chat_id: conversation.chat_id,
+                    from_worker: worker?.email || 'Unknown',
+                    to_worker: selectedWorker.email,
+                    note: handoverNote,
+                    status: 'pending',
                 }),
             });
+            if (!res.ok) {
+                const errText = await res.text();
+                console.error('Handover request failed:', errText);
+                setTransferring(false);
+                return;
+            }
             setTransferring(false);
             setTransferred(true);
             setShowVerifyModal(false);
@@ -144,11 +182,21 @@ export default function YouthProfileScreen({ route, navigation }) {
     }
 
     function getDaysWithOrg() {
-        if (!conversation.started_at) return 'Unknown';
+        if (!conversation.started_at) return null;
         const days = Math.floor((Date.now() - new Date(conversation.started_at)) / (1000 * 60 * 60 * 24));
         if (days < 1) return 'Today';
         if (days === 1) return '1 day';
         return `${days} days`;
+    }
+
+    function getTimeAgoShort(time) {
+        if (!time) return 'No contact yet';
+        const diffMins = Math.floor((Date.now() - new Date(time)) / 60000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+        const days = Math.floor(diffMins / 1440);
+        return `${days}d ago`;
     }
 
     function getRiskColor(level) {
@@ -162,11 +210,16 @@ export default function YouthProfileScreen({ route, navigation }) {
         return username.slice(0, 2).toUpperCase();
     }
 
-    const tabs = [
-        { key: 'profile', label: 'Profile', Icon: User },
-        { key: 'notes', label: 'Notes', Icon: FileText },
-        { key: 'handover', label: 'Handover', Icon: Users },
-    ];
+    const tabs = readOnly
+        ? [
+            { key: 'profile', label: 'Profile', Icon: User },
+            { key: 'notes', label: 'Notes', Icon: FileText },
+        ]
+        : [
+            { key: 'profile', label: 'Profile', Icon: User },
+            { key: 'notes', label: 'Notes', Icon: FileText },
+            { key: 'handover', label: 'Handover', Icon: Users },
+        ];
 
     const content = (
         <View style={[styles.container, { backgroundColor: 'transparent' }]}>
@@ -207,18 +260,64 @@ export default function YouthProfileScreen({ route, navigation }) {
                     <View style={[styles.card, { backgroundColor: colors.card }]}>
                         <Text style={[styles.sectionTitle, { color: colors.subtext }]}>Overview</Text>
                         {[
-                            { label: 'Age', value: conversation.age || 'Unknown' },
-                            { label: 'School', value: conversation.school || 'Unknown' },
+                            { label: 'Age', value: conversation.age || null },
+                            { label: 'School', value: conversation.school || null },
                             { label: 'Language', value: conversation.preferred_language || 'English' },
                             { label: 'Days with SCS', value: getDaysWithOrg() },
-                            { label: 'Trust Level', value: conversation.trust_level ? `${conversation.trust_level}/100` : 'N/A' },
-                            { label: 'Mood Score', value: conversation.mood_score ? `${conversation.mood_score}/100` : 'N/A' },
-                        ].map(({ label, value }) => (
+                        ].filter(item => item.value != null).map(({ label, value }) => (
                             <View key={label} style={styles.infoRow}>
                                 <Text style={[styles.infoLabel, { color: colors.subtext }]}>{label}</Text>
                                 <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
                             </View>
                         ))}
+                    </View>
+
+                    <View style={[styles.card, { backgroundColor: colors.card, marginTop: 12 }]}>
+                        <Text style={[styles.sectionTitle, { color: colors.subtext }]}>Scoreboard</Text>
+
+                        <View style={styles.scoreCardRow}>
+                            <View style={styles.scoreCardItem}>
+                                <View style={styles.scoreCardIconWrap}>
+                                    {conversation.distress_trend === 'critical' ? (
+                                        <AlertTriangle size={18} color="#FF3B30" />
+                                    ) : conversation.distress_trend === 'improving' ? (
+                                        <TrendingUp size={18} color="#34C759" />
+                                    ) : conversation.distress_trend === 'worsening' ? (
+                                        <TrendingDown size={18} color="#FF3B30" />
+                                    ) : (
+                                        <Minus size={18} color="#8E8E93" />
+                                    )}
+                                </View>
+                                <Text style={[styles.scoreCardLabel, { color: colors.subtext }]}>Distress Trend</Text>
+                                <Text style={[
+                                    styles.scoreCardValue,
+                                    {
+                                        color: conversation.distress_trend === 'critical' ? '#FF3B30'
+                                            : conversation.distress_trend === 'improving' ? '#34C759'
+                                                : conversation.distress_trend === 'worsening' ? '#FF3B30'
+                                                    : '#8E8E93'
+                                    }
+                                ]}>
+                                    {conversation.distress_trend === 'critical' ? 'Critical'
+                                        : conversation.distress_trend === 'improving' ? 'Improving'
+                                            : conversation.distress_trend === 'worsening' ? 'Worsening'
+                                                : conversation.distress_trend === 'new' ? 'New'
+                                                    : 'Stable'}
+                                </Text>
+                            </View>
+
+                            <View style={styles.scoreCardDivider} />
+
+                            <View style={styles.scoreCardItem}>
+                                <View style={styles.scoreCardIconWrap}>
+                                    <Clock size={18} color="#007AFF" />
+                                </View>
+                                <Text style={[styles.scoreCardLabel, { color: colors.subtext }]}>Last Contact</Text>
+                                <Text style={[styles.scoreCardValue, { color: colors.text }]}>
+                                    {getTimeAgoShort(conversation.last_message_time)}
+                                </Text>
+                            </View>
+                        </View>
                     </View>
 
                     {conversation.summary ? (
@@ -238,7 +337,14 @@ export default function YouthProfileScreen({ route, navigation }) {
                             ))}
                         </View>
                     ) : null}
-                    {isLimited ? (
+                    {readOnly ? (
+                        <View style={styles.readOnlyNotice}>
+                            <Text style={styles.readOnlyNoticeText}>
+                                This case has been handed over. You're viewing in read-only mode.
+                            </Text>
+                        </View>
+
+                    ) : isLimited ? (
                         <TouchableOpacity style={styles.chatButton} onPress={takeCase}>
                             <UserPlus size={18} color="#fff" />
                             <Text style={styles.chatButtonText}>Take Case</Text>
@@ -258,28 +364,29 @@ export default function YouthProfileScreen({ route, navigation }) {
             {activeTab === 'notes' && (
                 <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={120}>
                     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-                        <View style={[styles.card, { backgroundColor: colors.card, marginBottom: 16 }]}>
-                            <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 10 }]}>New Note</Text>
-                            <TextInput
-                                style={[styles.noteInputField, { backgroundColor: colors.input, color: colors.text }]}
-                                placeholder="Add a note about this youth..."
-                                placeholderTextColor="#8E8E93"
-                                value={newNote}
-                                onChangeText={setNewNote}
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                            />
-                            <TouchableOpacity
-                                style={[styles.saveNoteBtn, (!newNote.trim() || savingNote) && styles.saveNoteBtnDisabled]}
-                                onPress={saveNote}
-                                disabled={!newNote.trim() || savingNote}>
-                                {savingNote
-                                    ? <ActivityIndicator color="#fff" size="small" />
-                                    : <><Save size={14} color="#fff" /><Text style={styles.saveNoteBtnText}>Save Note</Text></>}
-                            </TouchableOpacity>
-                        </View>
-
+                        {!readOnly && (
+                            <View style={[styles.card, { backgroundColor: colors.card, marginBottom: 16 }]}>
+                                <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 10 }]}>New Note</Text>
+                                <TextInput
+                                    style={[styles.noteInputField, { backgroundColor: colors.input, color: colors.text }]}
+                                    placeholder="Add a note about this youth..."
+                                    placeholderTextColor="#8E8E93"
+                                    value={newNote}
+                                    onChangeText={setNewNote}
+                                    multiline
+                                    numberOfLines={4}
+                                    textAlignVertical="top"
+                                />
+                                <TouchableOpacity
+                                    style={[styles.saveNoteBtn, (!newNote.trim() || savingNote) && styles.saveNoteBtnDisabled]}
+                                    onPress={saveNote}
+                                    disabled={!newNote.trim() || savingNote}>
+                                    {savingNote
+                                        ? <ActivityIndicator color="#fff" size="small" />
+                                        : <><Save size={14} color="#fff" /><Text style={styles.saveNoteBtnText}>Save Note</Text></>}
+                                </TouchableOpacity>
+                            </View>
+                        )}
                         {loadingNotes ? (
                             <ActivityIndicator color="#007AFF" style={{ marginTop: 32 }} />
                         ) : notes.length === 0 ? (
@@ -312,29 +419,46 @@ export default function YouthProfileScreen({ route, navigation }) {
             {/* Handover Tab */}
             {activeTab === 'handover' && (
                 <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-                    {transferred ? (
+                    {checkingPending ? (
+                        <ActivityIndicator color="#007AFF" style={{ marginTop: 32 }} />
+                    ) : existingPendingRequest ? (
+                        <View style={styles.transferredBanner}>
+                            <CheckCircle size={20} color="#FF9500" />
+                            <Text style={styles.transferredText}>
+                                Handover request already sent to {existingPendingRequest.to_worker}, awaiting response.
+                            </Text>
+                        </View>
+                    ) : transferred ? (
                         <View style={styles.transferredBanner}>
                             <CheckCircle size={20} color="#34C759" />
-                            <Text style={styles.transferredText}>Case handed over to {selectedWorker?.name}</Text>
+                            <Text style={styles.transferredText}>Handover request sent to {selectedWorker?.name}</Text>
                         </View>
                     ) : (
                         <View style={[styles.card, { backgroundColor: colors.card }]}>
                             <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 12 }]}>Select Worker</Text>
-                            {WORKERS.filter(w => w.id !== worker?.id).map(w => (
-                                <TouchableOpacity
-                                    key={w.id}
-                                    style={[styles.workerOption, { borderColor: colors.border }, selectedWorker?.id === w.id && styles.workerOptionSelected]}
-                                    onPress={() => setSelectedWorker(w)}>
-                                    <View style={styles.workerAvatar}>
-                                        <Text style={styles.workerAvatarText}>{w.name.slice(0, 2).toUpperCase()}</Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[styles.workerName, { color: colors.text }]}>{w.name}</Text>
-                                        <Text style={styles.workerRole}>{w.role}</Text>
-                                    </View>
-                                    {selectedWorker?.id === w.id && <CheckCircle size={18} color="#007AFF" />}
-                                </TouchableOpacity>
-                            ))}
+                            {loadingWorkers ? (
+                                <ActivityIndicator color="#007AFF" style={{ marginVertical: 16 }} />
+                            ) : workersList.filter(w => w.email !== worker?.email).length === 0 ? (
+                                <Text style={{ color: colors.subtext, fontSize: 13, marginBottom: 12 }}>
+                                    No other workers found. Add workers in Manage Workers.
+                                </Text>
+                            ) : (
+                                workersList.filter(w => w.email !== worker?.email).map(w => (
+                                    <TouchableOpacity
+                                        key={w.id}
+                                        style={[styles.workerOption, { borderColor: colors.border }, selectedWorker?.id === w.id && styles.workerOptionSelected]}
+                                        onPress={() => setSelectedWorker(w)}>
+                                        <View style={styles.workerAvatar}>
+                                            <Text style={styles.workerAvatarText}>{w.name.slice(0, 2).toUpperCase()}</Text>
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.workerName, { color: colors.text }]}>{w.name}</Text>
+                                            <Text style={styles.workerRole}>{w.role}</Text>
+                                        </View>
+                                        {selectedWorker?.id === w.id && <CheckCircle size={18} color="#007AFF" />}
+                                    </TouchableOpacity>
+                                ))
+                            )}
 
                             <Text style={[styles.noteLabel, { color: colors.subtext, marginTop: 16 }]}>Handover Note</Text>
                             <TextInput
@@ -389,7 +513,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                                 </View>
                             ) : null}
                             <View style={styles.warningBox}>
-                                <Text style={styles.warningText}>This case will be removed from your caseload and transferred to {selectedWorker?.name}. This cannot be undone.</Text>
+                                <Text style={styles.warningText}>A handover request will be sent to {selectedWorker?.name}. The case stays in your caseload until they accept.</Text>
                             </View>
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
@@ -445,10 +569,18 @@ const styles = StyleSheet.create({
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: 'rgba(142,142,147,0.2)' },
     infoLabel: { fontSize: 14 },
     infoValue: { fontSize: 14, fontWeight: '500' },
+    scoreCardRow: { flexDirection: 'row', alignItems: 'center' },
+    scoreCardItem: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+    scoreCardIconWrap: { marginBottom: 6 },
+    scoreCardLabel: { fontSize: 11, marginBottom: 4 },
+    scoreCardValue: { fontSize: 14, fontWeight: '700' },
+    scoreCardDivider: { width: 1, height: 50, backgroundColor: 'rgba(142,142,147,0.2)' },
     snapshotText: { fontSize: 14, lineHeight: 20 },
     summaryPoint: { fontSize: 14, lineHeight: 22 },
     chatButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 14, padding: 14, marginTop: 16 },
     chatButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    readOnlyNotice: { backgroundColor: 'rgba(142,142,147,0.1)', borderRadius: 14, padding: 14, marginTop: 16, alignItems: 'center' },
+    readOnlyNoticeText: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
     socialTabHint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
     socialInput: { borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10 },
     analyseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 12, padding: 12 },
