@@ -300,7 +300,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                             key={key}
                             style={[styles.tab, activeTab === key && styles.tabActive]}
                             onPress={() => setActiveTab(key)}>
-                            <Icon size={16} color={activeTab === key ? '#007AFF' : '#8E8E93'} />
+                            <Icon size={16} color={activeTab === key ? '#D97706' : '#8E8E93'} />
                             <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
                         </TouchableOpacity>
                     ))}
@@ -363,7 +363,7 @@ export default function YouthProfileScreen({ route, navigation }) {
 
                             <View style={styles.scoreCardItem}>
                                 <View style={styles.scoreCardIconWrap}>
-                                    <Clock size={18} color="#007AFF" />
+                                    <Clock size={18} color="#D97706" />
                                 </View>
                                 <Text style={[styles.scoreCardLabel, { color: colors.subtext }]}>Last Contact</Text>
                                 <Text style={[styles.scoreCardValue, { color: colors.text }]}>
@@ -461,7 +461,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                             </View>
                         )}
                         {loadingNotes ? (
-                            <ActivityIndicator color="#007AFF" style={{ marginTop: 32 }} />
+                            <ActivityIndicator color="#D97706" style={{ marginTop: 32 }} />
                         ) : notes.length === 0 ? (
                             <View style={styles.emptyNotes}>
                                 <FileText size={40} color="#C7C7CC" />
@@ -512,7 +512,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                         automaticallyAdjustKeyboardInsets
                     >
                         {checkingPending ? (
-                            <ActivityIndicator color="#007AFF" style={{ marginTop: 32 }} />
+                            <ActivityIndicator color="#D97706" style={{ marginTop: 32 }} />
                         ) : existingPendingRequest ? (
                             <View style={styles.transferredBanner}>
                                 <CheckCircle size={20} color="#FF9500" />
@@ -529,7 +529,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                             <View style={[styles.card, { backgroundColor: colors.card }]}>
                                 <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 12 }]}>Select Worker</Text>
                                 {loadingWorkers ? (
-                                    <ActivityIndicator color="#007AFF" style={{ marginVertical: 16 }} />
+                                    <ActivityIndicator color="#D97706" style={{ marginVertical: 16 }} />
                                 ) : workersList.filter(w => w.email !== worker?.email).length === 0 ? (
                                     <Text style={{ color: colors.subtext, fontSize: 13, marginBottom: 12 }}>
                                         No other workers found. Add workers in Manage Workers.
@@ -547,7 +547,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                                                 <Text style={[styles.workerName, { color: colors.text }]}>{w.name}</Text>
                                                 <Text style={styles.workerRole}>{w.role}</Text>
                                             </View>
-                                            {selectedWorker?.id === w.id && <CheckCircle size={18} color="#007AFF" />}
+                                            {selectedWorker?.id === w.id && <CheckCircle size={18} color="#D97706" />}
                                         </TouchableOpacity>
                                     ))
                                 )}
@@ -636,19 +636,19 @@ export default function YouthProfileScreen({ route, navigation }) {
 
     if (isDark) {
         return (
-            <LinearGradient colors={['#0D0D1A', '#1A1A2E', '#16213E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+            <LinearGradient colors={['#0E0D0B', '#1A1712', '#251E14']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
                 {content}
             </LinearGradient>
         );
     }
 
-    return <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>{content}</View>;
+    return <View style={{ flex: 1, backgroundColor: '#F4F1EC' }}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
     profileHeader: { alignItems: 'center', padding: 20, borderBottomWidth: 0.5 },
-    avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+    avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#D97706', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
     avatarImage: { width: 70, height: 70, borderRadius: 35 },
     avatarText: { fontSize: 24, fontWeight: '700', color: '#fff' },
     displayName: { fontSize: 20, fontWeight: '700' },
@@ -657,9 +657,9 @@ const styles = StyleSheet.create({
     riskText: { color: '#fff', fontSize: 11, fontWeight: '700' },
     tabBar: { flexDirection: 'row', borderBottomWidth: 0.5 },
     tab: { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 3 },
-    tabActive: { borderBottomWidth: 2, borderBottomColor: '#007AFF' },
+    tabActive: { borderBottomWidth: 2, borderBottomColor: '#D97706' },
     tabText: { fontSize: 10, color: '#8E8E93', fontWeight: '500' },
-    tabTextActive: { color: '#007AFF', fontWeight: '600' },
+    tabTextActive: { color: '#D97706', fontWeight: '600' },
     card: { borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, marginBottom: 4 },
     sectionTitle: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: 'rgba(142,142,147,0.2)' },
@@ -673,13 +673,13 @@ const styles = StyleSheet.create({
     scoreCardDivider: { width: 1, height: 50, backgroundColor: 'rgba(142,142,147,0.2)' },
     snapshotText: { fontSize: 14, lineHeight: 20 },
     summaryPoint: { fontSize: 14, lineHeight: 22 },
-    chatButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 14, padding: 14, marginTop: 16 },
+    chatButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#D97706', borderRadius: 14, padding: 14, marginTop: 16 },
     chatButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
     readOnlyNotice: { backgroundColor: 'rgba(142,142,147,0.1)', borderRadius: 14, padding: 14, marginTop: 16, alignItems: 'center' },
     readOnlyNoticeText: { fontSize: 13, color: '#8E8E93', textAlign: 'center' },
     socialTabHint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
     socialInput: { borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10 },
-    analyseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 12, padding: 12 },
+    analyseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#D97706', borderRadius: 12, padding: 12 },
     analyseBtnDisabled: { backgroundColor: '#C7C7CC' },
     analyseBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     socialRiskRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     socialError: { fontSize: 14, color: '#FF3B30', fontWeight: '600' },
     errorHint: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
     noteInputField: { borderRadius: 10, padding: 12, fontSize: 15, minHeight: 90, marginBottom: 10 },
-    saveNoteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#007AFF', borderRadius: 12, padding: 12 },
+    saveNoteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#D97706', borderRadius: 12, padding: 12 },
     saveNoteBtnDisabled: { backgroundColor: '#C7C7CC' },
     saveNoteBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     emptyNotes: { alignItems: 'center', marginTop: 48, gap: 10 },
@@ -719,15 +719,15 @@ const styles = StyleSheet.create({
     transferredBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(52,199,89,0.1)', borderRadius: 14, padding: 16 },
     transferredText: { fontSize: 15, color: '#34C759', fontWeight: '600' },
     workerOption: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
-    workerOptionSelected: { borderColor: '#007AFF', backgroundColor: 'rgba(0,122,255,0.05)' },
-    workerAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E5F1FF', justifyContent: 'center', alignItems: 'center' },
-    workerAvatarText: { fontSize: 13, fontWeight: '700', color: '#007AFF' },
+    workerOptionSelected: { borderColor: '#D97706', backgroundColor: 'rgba(217,119,6,0.06)' },
+    workerAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FCEFD7', justifyContent: 'center', alignItems: 'center' },
+    workerAvatarText: { fontSize: 13, fontWeight: '700', color: '#D97706' },
     workerName: { fontSize: 14, fontWeight: '600' },
     workerRole: { fontSize: 12, color: '#8E8E93' },
     noteLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
     noteInput: { borderRadius: 10, padding: 12, fontSize: 15, minHeight: 80 },
     modalButtons: { flexDirection: 'row', gap: 10, marginTop: 16 },
-    nextBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#007AFF', borderRadius: 12, padding: 14 },
+    nextBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#D97706', borderRadius: 12, padding: 14 },
     nextBtnDisabled: { backgroundColor: '#C7C7CC' },
     nextBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
     warningText: { fontSize: 13, color: '#FF9500', lineHeight: 18 },
     cancelBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, padding: 14 },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: '#8E8E93' },
-    confirmBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#007AFF', borderRadius: 12, padding: 14 },
+    confirmBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#D97706', borderRadius: 12, padding: 14 },
     confirmBtnDisabled: { backgroundColor: '#C7C7CC' },
     confirmBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -113,9 +113,9 @@ export default function SocialScreen({ worker }) {
     // ---- Analysis view (youth selected) ----
     const analysisView = (
         <View style={{ flex: 1 }}>
-            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <SafeAreaView edges={['top']} style={[styles.header, styles.headerRow, { backgroundColor: 'transparent' }]}>
                 <TouchableOpacity onPress={backToList} style={styles.backBtn}>
-                    <ArrowLeft size={20} color="#007AFF" />
+                    <ArrowLeft size={20} color="#D97706" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
@@ -162,7 +162,7 @@ export default function SocialScreen({ worker }) {
                         {[
                             { label: 'Caption Risk', value: socialResult.caption_risk, color: '#FF3B30' },
                             { label: 'Hashtag Risk', value: socialResult.hashtag_risk, color: '#FF9500' },
-                            { label: 'Frequency Risk', value: socialResult.frequency_risk, color: '#007AFF' },
+                            { label: 'Frequency Risk', value: socialResult.frequency_risk, color: '#D97706' },
                         ].map(({ label, value, color }) => (
                             <View key={label} style={styles.scoreRow}>
                                 <Text style={styles.scoreLabel}>{label}</Text>
@@ -208,13 +208,19 @@ export default function SocialScreen({ worker }) {
     // ---- List view (no youth selected yet) ----
     const listView = (
         <View style={{ flex: 1 }}>
-            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <Image
+                source={require('../assets/lantern-mark.png')}
+                style={styles.bgLantern}
+                resizeMode="contain"
+                pointerEvents="none"
+            />
+            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: 'transparent' }]}>
+                <Text style={styles.headerEyebrow}>LANTERN</Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Social Media Check</Text>
-                <Text style={styles.headerSub}>{cases.length} assigned youth{cases.length !== 1 ? 's' : ''}</Text>
             </SafeAreaView>
 
             {loading ? (
-                <ActivityIndicator color="#007AFF" style={{ marginTop: 48 }} />
+                <ActivityIndicator color="#D97706" style={{ marginTop: 48 }} />
             ) : (
                 <FlatList
                     data={cases}
@@ -237,24 +243,27 @@ export default function SocialScreen({ worker }) {
 
     if (isDark) {
         return (
-            <LinearGradient colors={['#0D0D1A', '#1A1A2E', '#16213E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+            <LinearGradient colors={['#0E0D0B', '#1A1712', '#251E14']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
                 {content}
             </LinearGradient>
         );
     }
 
-    return <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>{content}</View>;
+    return <View style={{ flex: 1, backgroundColor: '#F4F1EC' }}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
-    header: { padding: 16, paddingTop: 16, borderBottomWidth: 0.5, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    header: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 16 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     backBtn: { padding: 4 },
-    headerTitle: { fontSize: 20, fontWeight: '700' },
+    headerEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#D97706', marginBottom: 2 },
+    headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
+    bgLantern: { position: 'absolute', alignSelf: 'center', top: '32%', width: 200, height: 200, opacity: 0.4 },
     headerSub: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
     card: { borderRadius: 16, padding: 14, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5F1FF', justifyContent: 'center', alignItems: 'center' },
-    avatarText: { fontSize: 15, fontWeight: '700', color: '#007AFF' },
+    avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FCEFD7', justifyContent: 'center', alignItems: 'center' },
+    avatarText: { fontSize: 15, fontWeight: '700', color: '#D97706' },
     displayName: { fontSize: 15, fontWeight: '700' },
     igRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
     igHandle: { fontSize: 12, color: '#8E8E93' },
@@ -265,7 +274,7 @@ const styles = StyleSheet.create({
     hint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
     inputCard: { borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     socialInput: { borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10 },
-    analyseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 12, padding: 12 },
+    analyseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#D97706', borderRadius: 12, padding: 12 },
     analyseBtnDisabled: { backgroundColor: '#C7C7CC' },
     analyseBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     socialRiskRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

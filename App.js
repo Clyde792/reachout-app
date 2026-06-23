@@ -4,10 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { supabase } from './supabase';
+import { registerForPushNotificationsAsync } from './lib/notifications';
 
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
@@ -27,13 +28,15 @@ const TABS = [
   { name: 'Profile', label: 'Profile', icon: 'person', iconOutline: 'person-outline' },
 ];
 function BubbleTabBar({ state, descriptors, navigation, isDark }) {
-  const bgColor = isDark ? '#12122A' : '#FFFFFF';
-  const bubbleColor = isDark ? '#1E1E3F' : '#EEF4FF';
-  const activeColor = '#007AFF';
-  const inactiveColor = isDark ? '#555570' : '#8E8E93';
+  const insets = useSafeAreaInsets();
+  const bgColor = isDark ? '#1A1712' : '#FFFFFF';
+  const bubbleColor = isDark ? '#2A271F' : '#FCEFD7';
+  const activeColor = '#D97706';
+  const inactiveColor = isDark ? '#7A7060' : '#8E8E93';
 
   return (
-    <View style={[tabStyles.container, { backgroundColor: bgColor, borderTopColor: isDark ? '#2D2D44' : '#E5E5EA' }]}>
+    <View style={[tabStyles.outer, { backgroundColor: isDark ? '#251E14' : '#F4F1EC', paddingBottom: (insets.bottom || 0) + 10 }]}>
+      <View style={[tabStyles.pill, { backgroundColor: bgColor, borderColor: isDark ? '#2E2A20' : '#E5E5EA' }]}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const tab = TABS.find(t => t.name === route.name);
@@ -58,16 +61,28 @@ function BubbleTabBar({ state, descriptors, navigation, isDark }) {
           </TouchableOpacity>
         );
       })}
+      </View>
     </View>
   );
 }
 
 const tabStyles = StyleSheet.create({
-  container: {
+  outer: {
+    paddingTop: 10,
+  },
+  pill: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 0.5,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   tab: {
     flex: 1,
@@ -118,7 +133,7 @@ function MainTabs({ worker }) {
         options={{
           headerShown: true,
           headerStyle: { backgroundColor: colors.header },
-          headerTintColor: '#007AFF',
+          headerTintColor: '#D97706',
           headerTitleStyle: { color: colors.text, fontWeight: '600' },
           title: 'Youth Profile',
         }}
@@ -126,13 +141,13 @@ function MainTabs({ worker }) {
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={{
+        options={({ route }) => ({
           headerShown: true,
           headerStyle: { backgroundColor: colors.header },
-          headerTintColor: '#007AFF',
+          headerTintColor: '#D97706',
           headerTitleStyle: { color: colors.text, fontWeight: '600' },
-          title: 'Conversation',
-        }}
+          title: route.params?.conversation?.display_name || route.params?.conversation?.username || 'Conversation',
+        })}
       />
     </Stack.Navigator>
   );
@@ -145,11 +160,14 @@ function PhoneShell({ children }) {
   return (
     <View style={shell.outer}>
       <View style={shell.phone}>
-        <View style={shell.notch} />
-        <View style={shell.screen}>
-          {children}
-        </View>
-        <View style={shell.homeBar} />
+        {/* Screen fills the whole phone (edge to edge); notch & home bar are
+            overlaid on top, and a web-only safe-area inset keeps content clear
+            of them while backgrounds fill all the way behind. */}
+        <SafeAreaInsetsContext.Provider value={{ top: 44, bottom: 20, left: 0, right: 0 }}>
+          <View style={shell.screen}>{children}</View>
+        </SafeAreaInsetsContext.Provider>
+        <View style={shell.notchWrap} pointerEvents="none"><View style={shell.notch} /></View>
+        <View style={shell.homeBarWrap} pointerEvents="none"><View style={shell.homeBar} /></View>
       </View>
     </View>
   );
@@ -168,6 +186,22 @@ export default function App() {
       setWorker(session?.user ?? null);
     });
   }, []);
+
+  // Register this device for push and save the token to the worker's profile,
+  // so the bot can notify the assigned worker when their youth messages.
+  useEffect(() => {
+    if (!worker?.email) return;
+    registerForPushNotificationsAsync().then(async (token) => {
+      if (!token) return;
+      try {
+        await supabase
+          .from('worker_profiles')
+          .upsert({ email: worker.email, expo_push_token: token }, { onConflict: 'email' });
+      } catch (e) {
+        console.error('Save push token error:', e);
+      }
+    });
+  }, [worker]);
 
   if (loading) return (
     <SafeAreaProvider>
@@ -204,7 +238,7 @@ const shell = StyleSheet.create({
   outer: { flex: 1, backgroundColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center' },
   phone: {
     width: 390, height: 844,
-    backgroundColor: '#0D0D1A',
+    backgroundColor: '#0E0D0B',
     borderRadius: 54,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -215,24 +249,22 @@ const shell = StyleSheet.create({
     borderWidth: 10,
     borderColor: '#1C1C1E',
   },
+  screen: { flex: 1 },
+  notchWrap: { position: 'absolute', top: 8, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   notch: {
     width: 120, height: 34,
     backgroundColor: '#1C1C1E',
     borderRadius: 20,
-    alignSelf: 'center',
-    marginTop: 8,
   },
-  screen: { flex: 1 },
+  homeBarWrap: { position: 'absolute', bottom: 8, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   homeBar: {
     width: 120, height: 5,
     backgroundColor: '#1C1C1E',
     borderRadius: 3,
-    alignSelf: 'center',
-    marginBottom: 8,
   },
 });
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F2F2F7' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F4F1EC' },
   text: { color: '#1C1C1E', fontSize: 18 },
 });

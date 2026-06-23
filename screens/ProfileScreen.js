@@ -109,8 +109,9 @@ export default function ProfileScreen({ worker }) {
 
     const content = (
         <View style={{ flex: 1 }}>
-            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
-                <Image source={require('../assets/scs-logo.png')} style={styles.logo} resizeMode="contain" />
+            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: 'transparent' }]}>
+                <Text style={styles.headerEyebrow}>LANTERN</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
             </SafeAreaView>
 
             <ScrollView style={{ flex: 1, backgroundColor: 'transparent' }}>
@@ -142,7 +143,7 @@ export default function ProfileScreen({ worker }) {
                         <Text style={styles.roleText}>Youth Worker · SCS</Text>
                     </View>
                     <TouchableOpacity style={styles.editProfileBtn} onPress={openEdit}>
-                        <Pencil size={14} color="#007AFF" />
+                        <Pencil size={14} color="#D97706" />
                         <Text style={styles.editProfileBtnText}>Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
@@ -162,7 +163,7 @@ export default function ProfileScreen({ worker }) {
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <View style={styles.infoRow}>
                             <Text style={[styles.infoLabel, { color: colors.text }]}>After hours</Text>
-                            <Text style={[styles.infoValue, { color: '#007AFF' }]}>AI bot takes over</Text>
+                            <Text style={[styles.infoValue, { color: '#D97706' }]}>AI bot takes over</Text>
                         </View>
                     </View>
                 </View>
@@ -258,32 +259,34 @@ export default function ProfileScreen({ worker }) {
 
     if (isDark) {
         return (
-            <LinearGradient colors={['#0D0D1A', '#1A1A2E', '#16213E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+            <LinearGradient colors={['#0E0D0B', '#1A1712', '#251E14']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
                 {content}
             </LinearGradient>
         );
     }
 
-    return <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>{content}</View>;
+    return <View style={{ flex: 1, backgroundColor: '#F4F1EC' }}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
-    header: { alignItems: 'center', padding: 16, borderBottomWidth: 0.5 },
+    header: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 16 },
+    headerEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#D97706', marginBottom: 2 },
+    headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
     logo: { width: 60, height: 60 },
     profileCard: { alignItems: 'center', padding: 24, marginBottom: 8 },
     avatarWrapper: { position: 'relative', marginBottom: 12 },
-    avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center' },
+    avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#D97706', justifyContent: 'center', alignItems: 'center' },
     avatarImage: { width: 80, height: 80, borderRadius: 40 },
     avatarText: { fontSize: 28, fontWeight: '700', color: '#fff' },
-    avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
+    avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: '#D97706', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
     name: { fontSize: 20, fontWeight: '700' },
     email: { fontSize: 14, color: '#8E8E93', marginTop: 2 },
     phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
     phone: { fontSize: 14, color: '#8E8E93' },
-    roleBadge: { backgroundColor: '#E5F1FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, marginTop: 8 },
-    roleText: { color: '#007AFF', fontSize: 13, fontWeight: '600' },
-    editProfileBtn: { marginTop: 14, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#007AFF', flexDirection: 'row', alignItems: 'center', gap: 6 },
-    editProfileBtnText: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
+    roleBadge: { backgroundColor: '#FCEFD7', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, marginTop: 8 },
+    roleText: { color: '#D97706', fontSize: 13, fontWeight: '600' },
+    editProfileBtn: { marginTop: 14, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#D97706', flexDirection: 'row', alignItems: 'center', gap: 6 },
+    editProfileBtnText: { color: '#D97706', fontSize: 14, fontWeight: '600' },
     section: { marginHorizontal: 16, marginTop: 24 },
     sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
     card: { borderRadius: 16, padding: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
@@ -302,7 +305,7 @@ const styles = StyleSheet.create({
     modalButtons: { flexDirection: 'row', gap: 10, marginTop: 24 },
     cancelBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: '#8E8E93' },
-    saveBtn: { flex: 1, backgroundColor: '#007AFF', borderRadius: 12, padding: 14, alignItems: 'center' },
+    saveBtn: { flex: 1, backgroundColor: '#D97706', borderRadius: 12, padding: 14, alignItems: 'center' },
     saveBtnDisabled: { backgroundColor: '#C7C7CC' },
     saveBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });

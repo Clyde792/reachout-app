@@ -116,13 +116,13 @@ export default function ManageWorkersScreen({ navigation }) {
 
     const content = (
         <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-            <View style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <View style={[styles.header, { backgroundColor: 'transparent' }]}>
+                <Text style={styles.headerEyebrow}>LANTERN</Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Workers</Text>
-                <Text style={[styles.headerSub, { color: colors.subtext }]}>{workers.length} team member{workers.length !== 1 ? 's' : ''}</Text>
             </View>
 
             {loading ? (
-                <ActivityIndicator color="#007AFF" style={{ marginTop: 48 }} />
+                <ActivityIndicator color="#D97706" style={{ marginTop: 48 }} />
             ) : (
                 <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
                     <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
@@ -161,7 +161,7 @@ export default function ManageWorkersScreen({ navigation }) {
                                     </View>
                                     <View style={styles.workerActions}>
                                         <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(w)}>
-                                            <Pencil size={13} color="#007AFF" />
+                                            <Pencil size={13} color="#D97706" />
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.deleteBtn}
@@ -229,34 +229,35 @@ export default function ManageWorkersScreen({ navigation }) {
 
     if (isDark) {
         return (
-            <LinearGradient colors={['#0D0D1A', '#1A1A2E', '#16213E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+            <LinearGradient colors={['#0E0D0B', '#1A1712', '#251E14']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
                 {content}
             </LinearGradient>
         );
     }
 
-    return <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>{content}</View>;
+    return <View style={{ flex: 1, backgroundColor: '#F4F1EC' }}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
-    header: { padding: 20, paddingTop: 16, borderBottomWidth: 0.5 },
-    headerTitle: { fontSize: 24, fontWeight: '700' },
+    header: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 16 },
+    headerEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#D97706', marginBottom: 2 },
+    headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
     headerSub: { fontSize: 13, marginTop: 2 },
-    addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#007AFF', borderRadius: 14, padding: 14, marginBottom: 16 },
+    addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#D97706', borderRadius: 14, padding: 14, marginBottom: 16 },
     addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
     empty: { alignItems: 'center', marginTop: 60, gap: 12 },
     emptyTitle: { fontSize: 17, fontWeight: '600' },
     emptySub: { fontSize: 14, marginTop: 4 },
     workerCard: { borderRadius: 16, padding: 14, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     workerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-    workerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5F1FF', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-    workerAvatarText: { fontSize: 15, fontWeight: '700', color: '#007AFF' },
+    workerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FCEFD7', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+    workerAvatarText: { fontSize: 15, fontWeight: '700', color: '#D97706' },
     workerName: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
     workerRole: { fontSize: 13, color: '#8E8E93', marginBottom: 4 },
     detailRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
     workerDetail: { fontSize: 12, color: '#8E8E93' },
     workerActions: { flexDirection: 'column', gap: 8, alignItems: 'center' },
-    editBtn: { backgroundColor: '#E5F1FF', borderRadius: 8, padding: 7 },
+    editBtn: { backgroundColor: '#FCEFD7', borderRadius: 8, padding: 7 },
     deleteBtn: { padding: 4 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalBox: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     modalButtons: { flexDirection: 'row', gap: 10, marginTop: 24 },
     cancelBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
     cancelBtnText: { fontSize: 15, fontWeight: '600', color: '#8E8E93' },
-    saveBtn: { flex: 1, backgroundColor: '#007AFF', borderRadius: 12, padding: 14, alignItems: 'center' },
+    saveBtn: { flex: 1, backgroundColor: '#D97706', borderRadius: 12, padding: 14, alignItems: 'center' },
     saveBtnDisabled: { backgroundColor: '#C7C7CC' },
     saveBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });

@@ -21,11 +21,11 @@ export default function LoginScreen() {
                 {/* Logo */}
                 <View style={styles.logoContainer}>
                     <Image
-                        source={require('../assets/scs-logo.png')}
+                        source={require('../assets/lantern-mark.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />
-                    <Text style={styles.appName}>ReachOut</Text>
+                    <Text style={styles.appName}>Lantern</Text>
                     <Text style={styles.tagline}>Worker Portal · Singapore Children's Society</Text>
                 </View>
 
@@ -70,7 +70,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F2F2F7' },
+    container: { flex: 1, backgroundColor: '#F4F1EC' },
     inner: { flex: 1, justifyContent: 'center', padding: 24 },
     logoContainer: { alignItems: 'center', marginBottom: 32 },
     logo: { width: 120, height: 120, marginBottom: 16 },
@@ -86,11 +86,11 @@ const styles = StyleSheet.create({
     inputGroup: { marginBottom: 16 },
     label: { fontSize: 12, fontWeight: '600', color: '#8E8E93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
     input: {
-        backgroundColor: '#F2F2F7', borderRadius: 12,
+        backgroundColor: '#F4F1EC', borderRadius: 12,
         padding: 14, fontSize: 16, color: '#1C1C1E',
     },
     button: {
-        backgroundColor: '#007AFF', borderRadius: 14,
+        backgroundColor: '#D97706', borderRadius: 14,
         padding: 16, alignItems: 'center', marginTop: 8,
     },
     buttonText: { color: '#fff', fontSize: 17, fontWeight: '600' },

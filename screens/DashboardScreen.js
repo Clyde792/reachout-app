@@ -101,7 +101,6 @@ export default function DashboardScreen({ navigation, worker }) {
     }
 
     async function fetchConversations() {
-        setRefreshing(true);
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?select=*&assigned_worker=is.null&order=last_message_time.desc.nullslast`,
@@ -181,12 +180,12 @@ export default function DashboardScreen({ navigation, worker }) {
 
         return (
             <TouchableOpacity
-                style={[styles.card, { backgroundColor: colors.card }, isHighRisk && styles.cardAlert]}
+                style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }, isHighRisk && styles.cardAlert]}
                 onPress={() => navigation.navigate('YouthProfile', { conversation: item, worker, limitedView: true })}>
 
                 <View style={styles.cardTop}>
-                    <View style={[styles.avatar, { backgroundColor: isHighRisk ? '#FFE5E5' : '#E5F1FF' }]}>
-                        <Text style={[styles.avatarText, { color: isHighRisk ? '#FF3B30' : '#007AFF' }]}>
+                    <View style={[styles.avatar, { backgroundColor: isHighRisk ? '#FFE5E5' : '#FCEFD7' }]}>
+                        <Text style={[styles.avatarText, { color: isHighRisk ? '#FF3B30' : '#D97706' }]}>
                             {getInitials(item.username)}
                         </Text>
                     </View>
@@ -207,17 +206,17 @@ export default function DashboardScreen({ navigation, worker }) {
 
                         <View style={styles.badgeRow}>
                             <View style={[styles.riskBadge, { backgroundColor: getRiskColor(item.risk_level) }]}>
-                                {isHighRisk && <AlertTriangle size={9} color="#fff" style={{ marginRight: 3 }} />}
+                                {isHighRisk && <AlertTriangle size={10} color="#fff" style={{ marginRight: 3 }} />}
                                 <Text style={styles.riskText}>{(item.risk_level || 'unknown').toUpperCase()}</Text>
                             </View>
                             {isAssigned ? (
                                 <View style={styles.assignedBadge}>
-                                    <Users size={9} color="#007AFF" />
+                                    <Users size={10} color="#D97706" />
                                     <Text style={styles.assignedText}>Assigned</Text>
                                 </View>
                             ) : (
                                 <TouchableOpacity style={styles.takeCaseBtn} onPress={() => takeCase(item)}>
-                                    <UserPlus size={10} color="#fff" />
+                                    <UserPlus size={11} color="#fff" />
                                     <Text style={styles.takeCaseText}>Take Case</Text>
                                 </TouchableOpacity>
                             )}
@@ -241,11 +240,10 @@ export default function DashboardScreen({ navigation, worker }) {
 
     const content = (
         <View style={{ flex: 1 }}>
-            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
-                <Image source={require('../assets/scs-logo.png')} style={styles.logo} resizeMode="contain" />
+            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: 'transparent' }]}>
                 <View>
+                    <Text style={styles.headerEyebrow}>LANTERN</Text>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
-                    <Text style={styles.headerSub}>Welcome, {worker?.email?.split('@')[0] || 'Worker'}</Text>
                 </View>
             </SafeAreaView>
 
@@ -286,32 +284,36 @@ export default function DashboardScreen({ navigation, worker }) {
                 </View>
             )}
 
-            <View style={[styles.statsRow, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <LinearGradient
+                colors={['#9A5616', '#6B3D0E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statsCard}>
                 <View style={styles.statItem}>
-                    <Text style={[styles.statNum, { color: colors.text }]}>{conversations.length}</Text>
+                    <Text style={styles.statNum}>{conversations.length}</Text>
                     <Text style={styles.statLabel}>Total</Text>
                 </View>
-                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                    <Text style={[styles.statNum, { color: '#FF3B30' }]}>{highRisk}</Text>
+                    <Text style={styles.statNum}>{highRisk}</Text>
                     <Text style={styles.statLabel}>High Risk</Text>
                 </View>
-                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                    <Text style={[styles.statNum, { color: '#FF9500' }]}>{unassigned}</Text>
+                    <Text style={styles.statNum}>{unassigned}</Text>
                     <Text style={styles.statLabel}>Unassigned</Text>
                 </View>
-            </View>
+            </LinearGradient>
 
             <FlatList
                 data={conversations}
                 keyExtractor={item => String(item.chat_id)}
                 renderItem={renderItem}
                 style={{ flex: 1, backgroundColor: 'transparent' }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchConversations} tintColor="#007AFF" />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchConversations(); }} tintColor="#D97706" />}
                 ListEmptyComponent={
                     <View style={styles.empty}>
-                        <Users size={48} color="#C7C7CC" />
+                        <Image source={require('../assets/lantern-mark.png')} style={styles.emptyLantern} resizeMode="contain" />
                         <Text style={[styles.emptyTitle, { color: colors.text }]}>No conversations yet</Text>
                         <Text style={styles.emptySub}>Youths who message the bot will appear here</Text>
                     </View>
@@ -324,7 +326,7 @@ export default function DashboardScreen({ navigation, worker }) {
     if (isDark) {
         return (
             <LinearGradient
-                colors={['#0D0D1A', '#1A1A2E', '#16213E']}
+                colors={['#0E0D0B', '#1A1712', '#251E14']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ flex: 1 }}>
@@ -333,14 +335,14 @@ export default function DashboardScreen({ navigation, worker }) {
         );
     }
 
-    return <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>{content}</View>;
+    return <View style={{ flex: 1, backgroundColor: '#F4F1EC' }}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
-    header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: 0.5 },
-    logo: { width: 36, height: 36 },
-    headerTitle: { fontSize: 20, fontWeight: '700' },
-    headerSub: { fontSize: 13, color: '#8E8E93', marginTop: 1 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 6, paddingBottom: 16 },
+    logo: { width: 38, height: 38 },
+    headerEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#D97706', marginBottom: 2 },
+    headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
     wellbeingBanner: { margin: 16, marginBottom: 0, borderRadius: 14, padding: 14, borderWidth: 1 },
     wellbeingTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     wellbeingTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -351,12 +353,12 @@ const styles = StyleSheet.create({
     moodBtnText: { fontSize: 13, fontWeight: '600' },
     supportNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, margin: 16, marginBottom: 0, backgroundColor: 'rgba(255,107,129,0.1)', borderRadius: 12, padding: 12 },
     supportNoteText: { flex: 1, fontSize: 12, color: '#FF6B81', lineHeight: 17 },
-    statsRow: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 0.5, marginTop: 12 },
-    statItem: { flex: 1, alignItems: 'center' },
-    statNum: { fontSize: 22, fontWeight: '700' },
-    statLabel: { fontSize: 11, color: '#8E8E93', marginTop: 2 },
-    statDivider: { width: 0.5 },
-    card: { marginHorizontal: 16, marginTop: 12, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+    statsCard: { flexDirection: 'row', marginHorizontal: 20, marginTop: 8, borderRadius: 20, paddingVertical: 20, paddingHorizontal: 8, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+    statItem: { flex: 1, alignItems: 'center', gap: 4 },
+    statNum: { fontSize: 26, fontWeight: '800', color: '#fff' },
+    statLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+    statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 8 },
+    card: { marginHorizontal: 20, marginTop: 14, borderRadius: 20, padding: 16, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     cardAlert: { borderColor: '#FF3B30', borderWidth: 1.5 },
     cardTop: { flexDirection: 'row', alignItems: 'center' },
     avatar: { width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
@@ -366,16 +368,17 @@ const styles = StyleSheet.create({
     timeRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     timeAgo: { fontSize: 12, color: '#8E8E93' },
     badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    riskBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexDirection: 'row', alignItems: 'center' },
-    riskText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-    assignedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: '#E5F1FF' },
-    assignedText: { fontSize: 9, color: '#007AFF', fontWeight: '600' },
-    takeCaseBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: '#34C759' },
-    takeCaseText: { fontSize: 9, color: '#fff', fontWeight: '600' },
+    riskBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center' },
+    riskText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+    assignedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: '#FCEFD7' },
+    assignedText: { fontSize: 10, color: '#D97706', fontWeight: '600' },
+    takeCaseBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#34C759' },
+    takeCaseText: { fontSize: 10, color: '#fff', fontWeight: '600' },
     snapshot: { fontSize: 13, marginTop: 8, lineHeight: 18 },
     displayName: { fontSize: 15, fontWeight: '700' },
     usernameSmall: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
-    empty: { alignItems: 'center', marginTop: 80, gap: 12 },
-    emptyTitle: { fontSize: 17, fontWeight: '600' },
-    emptySub: { fontSize: 14, color: '#8E8E93' },
+    empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6, paddingBottom: 60 },
+    emptyLantern: { width: 200, height: 200, opacity: 0.4, marginBottom: 4 },
+    emptyTitle: { fontSize: 17, fontWeight: '600', opacity: 0.55 },
+    emptySub: { fontSize: 14, color: '#8E8E93', opacity: 0.85, textAlign: 'center' },
 });

@@ -23,22 +23,22 @@ export function ThemeProvider({ children }) {
     const theme = {
         isDark,
         colors: {
-            background: isDark ? 'transparent' : '#F2F2F7',
-            card: isDark ? '#1A1A2E' : '#FFFFFF',
+            background: isDark ? 'transparent' : '#F4F1EC',
+            card: isDark ? '#1A1712' : '#FFFFFF',
             text: isDark ? '#FFFFFF' : '#1C1C1E',
             subtext: isDark ? '#8E8E93' : '#8E8E93',
-            border: isDark ? '#2D2D44' : '#E5E5EA',
-            primary: '#007AFF',
-            header: isDark ? '#16213E' : '#FFFFFF',
-            input: isDark ? '#2D2D44' : '#F2F2F7',
-            tabBar: isDark ? '#16213E' : '#FFFFFF',
+            border: isDark ? '#2E2A20' : '#E5E5EA',
+            primary: '#D97706',
+            header: isDark ? '#251E14' : '#FFFFFF',
+            input: isDark ? '#2E2A20' : '#F4F1EC',
+            tabBar: isDark ? '#251E14' : '#FFFFFF',
         }
     };
     function Background({ children, style }) {
         if (isDark) {
             return (
                 <LinearGradient
-                    colors={['#0D0D1A', '#1A1A2E', '#16213E']}
+                    colors={['#0E0D0B', '#1A1712', '#251E14']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[{ flex: 1 }, style]}>
@@ -46,7 +46,7 @@ export function ThemeProvider({ children }) {
                 </LinearGradient>
             );
         }
-        return <View style={[{ flex: 1, backgroundColor: '#F2F2F7' }, style]}>{children}</View>;
+        return <View style={[{ flex: 1, backgroundColor: '#F4F1EC' }, style]}>{children}</View>;
     }
     return (
         <ThemeContext.Provider value={{ ...theme, Background }}>

@@ -1,13 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, Image, TextInput, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { AlertTriangle, Clock, ClipboardList, Repeat, Check, X } from 'lucide-react-native';
+import { AlertTriangle, Clock, Repeat, Check, X, Search } from 'lucide-react-native';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
+
+const RISK_FILTERS = [
+    { key: 'all', label: 'All', color: null },
+    { key: 'high', label: 'High', color: '#FF3B30' },
+    { key: 'medium', label: 'Medium', color: '#FF9500' },
+    { key: 'low', label: 'Low', color: '#34C759' },
+];
 
 export default function MyCasesScreen({ navigation, worker }) {
     const [cases, setCases] = useState([]);
@@ -19,6 +26,8 @@ export default function MyCasesScreen({ navigation, worker }) {
     const [activeTab, setActiveTab] = useState('active');
     const [workerNames, setWorkerNames] = useState({});
     const [acceptedInfo, setAcceptedInfo] = useState(null);
+    const [search, setSearch] = useState('');
+    const [riskFilter, setRiskFilter] = useState('all');
     const { colors, isDark } = useTheme();
 
     useFocusEffect(
@@ -77,7 +86,6 @@ export default function MyCasesScreen({ navigation, worker }) {
     }
 
     async function fetchMyCases() {
-        setRefreshing(true);
         try {
             const email = worker?.email;
             const res = await fetch(
@@ -135,25 +143,19 @@ export default function MyCasesScreen({ navigation, worker }) {
 
     async function fetchAllSentHistory() {
         try {
+            // Drive "Handed Over" off the live conversation, not the append-only
+            // case_history log. A case shows here only while I'm the worker who
+            // handed it to its *current* holder (conversations.handover_from).
+            // Once it's passed on again, handover_from changes and it drops off
+            // this list automatically — no stale duplicates.
             const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/case_history?worker_email=eq.${encodeURIComponent(worker?.email)}&select=*&order=created_at.desc`,
+                `${SUPABASE_URL}/rest/v1/conversations?handover_from=eq.${encodeURIComponent(worker?.email)}&select=chat_id,username,display_name,risk_level,crisis,assigned_worker,mood_score,handover_at&order=handover_at.desc.nullslast`,
                 { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
             );
             const data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) {
-                setAllSentHistory([]);
-                return;
-            }
-            const chatIds = [...new Set(data.map(r => r.chat_id))];
-            const convRes = await fetch(
-                `${SUPABASE_URL}/rest/v1/conversations?chat_id=in.(${chatIds.join(',')})&select=chat_id,username,display_name,risk_level,crisis,assigned_worker,mood_score,summary,suggested_action,snapshot,age,school,trust_level,engagement_level,started_at`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
-            );
-            const convData = await convRes.json();
-            const merged = data.map(h => ({
-                ...h,
-                conversation: Array.isArray(convData) ? convData.find(c => c.chat_id === h.chat_id) : null,
-            }));
+            const merged = (Array.isArray(data) ? data : [])
+                .filter(c => c.assigned_worker !== worker?.email) // exclude any that came back to me
+                .map(c => ({ id: c.chat_id, conversation: c }));
             setAllSentHistory(merged);
         } catch (e) {
             console.error('Fetch sent history error:', e);
@@ -228,16 +230,31 @@ export default function MyCasesScreen({ navigation, worker }) {
         return username.slice(0, 2).toUpperCase();
     }
 
+    // Filter a case by the search box (matches display name or @username).
+    function matchesSearch(c) {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        return (c?.display_name || '').toLowerCase().includes(q)
+            || (c?.username || '').toLowerCase().includes(q);
+    }
+
+    // Filter a case by the selected risk level (High / Medium / Low / All).
+    function matchesRisk(c) {
+        if (riskFilter === 'all') return true;
+        if (riskFilter === 'high') return c?.risk_level === 'high' || c?.crisis;
+        return c?.risk_level === riskFilter;
+    }
+
     function renderItem({ item }) {
         const isHighRisk = item.risk_level === 'high' || item.crisis;
         return (
             <TouchableOpacity
-                style={[styles.card, { backgroundColor: colors.card }, isHighRisk && styles.cardAlert]}
+                style={[styles.card, { backgroundColor: colors.card }]}
                 onPress={() => navigation.navigate('YouthProfile', { conversation: item, worker })}>
 
                 <View style={styles.cardTop}>
-                    <View style={[styles.avatar, { backgroundColor: isHighRisk ? '#FFE5E5' : '#E5F1FF' }]}>
-                        <Text style={[styles.avatarText, { color: isHighRisk ? '#FF3B30' : '#007AFF' }]}>
+                    <View style={[styles.avatar, { backgroundColor: isHighRisk ? '#FFE5E5' : '#FCEFD7' }]}>
+                        <Text style={[styles.avatarText, { color: isHighRisk ? '#FF3B30' : '#D97706' }]}>
                             {getInitials(item.username)}
                         </Text>
                     </View>
@@ -282,22 +299,57 @@ export default function MyCasesScreen({ navigation, worker }) {
 
     const content = (
         <View style={{ flex: 1 }}>
-            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: 'transparent' }]}>
+                <Text style={styles.headerEyebrow}>LANTERN</Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>My Cases</Text>
-                <Text style={styles.headerSub}>{cases.length} youth{cases.length !== 1 ? 's' : ''} assigned to you</Text>
             </SafeAreaView>
 
-            <View style={[styles.tabBar, { backgroundColor: colors.header, borderBottomColor: colors.border }]}>
+            <View style={styles.segmentRow}>
                 <TouchableOpacity
-                    style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+                    activeOpacity={0.8}
+                    style={[styles.segBtn, activeTab === 'active' && [styles.segBtnActive, { backgroundColor: colors.card }]]}
                     onPress={() => setActiveTab('active')}>
-                    <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>Active</Text>
+                    <Text style={[styles.segText, { color: activeTab === 'active' ? colors.text : colors.subtext }]}>Active</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.tab, activeTab === 'handedover' && styles.tabActive]}
+                    activeOpacity={0.8}
+                    style={[styles.segBtn, activeTab === 'handedover' && [styles.segBtnActive, { backgroundColor: colors.card }]]}
                     onPress={() => setActiveTab('handedover')}>
-                    <Text style={[styles.tabText, activeTab === 'handedover' && styles.tabTextActive]}>Handed Over</Text>
+                    <Text style={[styles.segText, { color: activeTab === 'handedover' ? colors.text : colors.subtext }]}>Handed Over</Text>
                 </TouchableOpacity>
+            </View>
+
+            <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Search size={16} color={colors.subtext} />
+                <TextInput
+                    style={[styles.searchInput, { color: colors.text }]}
+                    placeholder="Search your cases…"
+                    placeholderTextColor={colors.subtext}
+                    value={search}
+                    onChangeText={setSearch}
+                    autoCapitalize="none"
+                />
+                {search ? (
+                    <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+                        <X size={16} color={colors.subtext} />
+                    </TouchableOpacity>
+                ) : null}
+            </View>
+
+            <View style={styles.filterRow}>
+                {RISK_FILTERS.map(f => {
+                    const active = riskFilter === f.key;
+                    return (
+                        <TouchableOpacity
+                            key={f.key}
+                            activeOpacity={0.8}
+                            onPress={() => setRiskFilter(f.key)}
+                            style={[styles.filterChip, active && styles.filterChipActive, active && { backgroundColor: colors.card }]}>
+                            {f.color ? <View style={[styles.filterDot, { backgroundColor: f.color }]} /> : null}
+                            <Text style={[styles.filterChipText, { color: active ? colors.text : colors.subtext }]}>{f.label}</Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             {activeTab === 'active' ? (
@@ -305,7 +357,7 @@ export default function MyCasesScreen({ navigation, worker }) {
                     {pendingRequests.length > 0 && (
                         <View style={styles.requestsSection}>
                             <View style={styles.requestsHeader}>
-                                <Repeat size={14} color="#007AFF" />
+                                <Repeat size={14} color="#D97706" />
                                 <Text style={[styles.requestsTitle, { color: colors.text }]}>
                                     Handover Request{pendingRequests.length !== 1 ? 's' : ''}
                                 </Text>
@@ -351,14 +403,14 @@ export default function MyCasesScreen({ navigation, worker }) {
                     )}
 
                     <FlatList
-                        data={cases}
+                        data={cases.filter(c => matchesSearch(c) && matchesRisk(c))}
                         keyExtractor={item => String(item.chat_id)}
                         renderItem={renderItem}
                         style={{ flex: 1, backgroundColor: 'transparent' }}
-                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMyCases} tintColor="#007AFF" />}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchMyCases(); }} tintColor="#D97706" />}
                         ListEmptyComponent={
                             <View style={styles.empty}>
-                                <ClipboardList size={48} color="#C7C7CC" />
+                                <Image source={require('../assets/lantern-mark.png')} style={styles.emptyLantern} resizeMode="contain" />
                                 <Text style={[styles.emptyTitle, { color: colors.text }]}>No cases yet</Text>
                                 <Text style={styles.emptySub}>Go to Home to claim unassigned youths</Text>
                             </View>
@@ -368,7 +420,7 @@ export default function MyCasesScreen({ navigation, worker }) {
                 </>
             ) : (
                 <FlatList
-                    data={allSentHistory}
+                    data={allSentHistory.filter(h => matchesSearch(h.conversation) && matchesRisk(h.conversation))}
                     keyExtractor={item => String(item.id)}
                     renderItem={({ item }) => {
                         const conv = item.conversation;
@@ -395,7 +447,7 @@ export default function MyCasesScreen({ navigation, worker }) {
                     contentContainerStyle={{ paddingTop: 12, paddingBottom: 32, flexGrow: 1 }}
                     ListEmptyComponent={
                         <View style={styles.empty}>
-                            <Repeat size={48} color="#C7C7CC" />
+                            <Image source={require('../assets/lantern-mark.png')} style={styles.emptyLantern} resizeMode="contain" />
                             <Text style={[styles.emptyTitle, { color: colors.text }]}>No handed over cases</Text>
                             <Text style={styles.emptySub}>Cases you've handed over will appear here, with current status</Text>
                         </View>
@@ -446,7 +498,7 @@ export default function MyCasesScreen({ navigation, worker }) {
     if (isDark) {
         return (
             <LinearGradient
-                colors={['#0D0D1A', '#1A1A2E', '#16213E']}
+                colors={['#0E0D0B', '#1A1712', '#251E14']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ flex: 1 }}>
@@ -455,18 +507,25 @@ export default function MyCasesScreen({ navigation, worker }) {
         );
     }
 
-    return <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>{content}</View>;
+    return <View style={{ flex: 1, backgroundColor: '#F4F1EC' }}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
-    header: { padding: 20, paddingTop: 16, borderBottomWidth: 0.5 },
-    headerTitle: { fontSize: 24, fontWeight: '700' },
+    header: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 6 },
+    headerEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#D97706', marginBottom: 2 },
+    headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
     headerSub: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
-    tabBar: { flexDirection: 'row', borderBottomWidth: 0.5 },
-    tab: { flex: 1, alignItems: 'center', paddingVertical: 10 },
-    tabActive: { borderBottomWidth: 2, borderBottomColor: '#007AFF' },
-    tabText: { fontSize: 13, color: '#8E8E93', fontWeight: '500' },
-    tabTextActive: { color: '#007AFF', fontWeight: '700' },
+    segmentRow: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 0, marginBottom: 12 },
+    segBtn: { flex: 1, paddingVertical: 10, borderRadius: 14, alignItems: 'center' },
+    segBtnActive: { shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+    segText: { fontSize: 14, fontWeight: '600' },
+    searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginBottom: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, borderWidth: 1 },
+    searchInput: { flex: 1, fontSize: 15, padding: 0 },
+    filterRow: { flexDirection: 'row', gap: 8, marginHorizontal: 20, marginBottom: 12 },
+    filterChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    filterChipActive: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+    filterDot: { width: 8, height: 8, borderRadius: 4 },
+    filterChipText: { fontSize: 13, fontWeight: '600' },
     requestsSection: { paddingHorizontal: 16, paddingTop: 12 },
     requestsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
     requestsTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -491,14 +550,15 @@ const styles = StyleSheet.create({
     cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     timeRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
     timeAgo: { fontSize: 12, color: '#8E8E93' },
-    riskBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexDirection: 'row', alignItems: 'center' },
-    riskText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-    empty: { alignItems: 'center', marginTop: 80, gap: 12 },
-    emptyTitle: { fontSize: 17, fontWeight: '600' },
-    emptySub: { fontSize: 14, color: '#8E8E93', marginTop: 4 },
+    riskBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center' },
+    riskText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+    empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6, paddingBottom: 60 },
+    emptyLantern: { width: 200, height: 200, opacity: 0.4, marginBottom: 4 },
+    emptyTitle: { fontSize: 17, fontWeight: '600', opacity: 0.55 },
+    emptySub: { fontSize: 14, color: '#8E8E93', opacity: 0.85, textAlign: 'center' },
     displayName: { fontSize: 15, fontWeight: '700' },
     usernameSmall: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
-    progressSection: { borderTopWidth: 0.5, borderTopColor: '#2D2D44', paddingTop: 10, marginBottom: 8 },
+    progressSection: { borderTopWidth: 0.5, borderTopColor: '#2E2A20', paddingTop: 10, marginBottom: 8 },
     moodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     moodLabel: { fontSize: 11, color: '#8E8E93', width: 32 },
     moodTrack: { flex: 1, height: 6, backgroundColor: '#3A3A3C', borderRadius: 3, overflow: 'hidden' },
@@ -516,6 +576,6 @@ const styles = StyleSheet.create({
     acceptedButtons: { flexDirection: 'row', gap: 10, width: '100%' },
     acceptedSecondaryBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, padding: 14, backgroundColor: 'rgba(142,142,147,0.15)' },
     acceptedSecondaryText: { fontSize: 15, fontWeight: '600', color: '#8E8E93' },
-    acceptedPrimaryBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, padding: 14, backgroundColor: '#007AFF' },
+    acceptedPrimaryBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, padding: 14, backgroundColor: '#D97706' },
     acceptedPrimaryText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });
