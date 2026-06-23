@@ -44,7 +44,7 @@ export default function SocialScreen({ worker }) {
 
     function selectYouth(item) {
         setSelected(item);
-        setIgUsername(item.instagram_username || '');
+        setIgUsername((item.instagram_username || '').replace(/^@+/, ''));
         setSocialResult(null);
     }
 
@@ -61,7 +61,7 @@ export default function SocialScreen({ worker }) {
             const res = await fetch(`${BOT_URL}/analyze-social`, {
                 method: 'POST',
                 headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: selected.chat_id, instagram_username: igUsername.trim() }),
+                body: JSON.stringify({ chatId: selected.chat_id, instagram_username: igUsername.trim().replace(/^@+/, '') }),
             });
             const data = await res.json();
             setSocialResult(data);
@@ -98,7 +98,7 @@ export default function SocialScreen({ worker }) {
                         {item.instagram_username ? (
                             <View style={styles.igRow}>
                                 <AtSign size={11} color="#8E8E93" />
-                                <Text style={styles.igHandle}>@{item.instagram_username}</Text>
+                                <Text style={styles.igHandle}>@{item.instagram_username.replace(/^@+/, '')}</Text>
                             </View>
                         ) : (
                             <Text style={styles.noIg}>No Instagram saved yet</Text>
