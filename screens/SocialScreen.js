@@ -98,7 +98,7 @@ export default function SocialScreen({ worker }) {
                         {item.instagram_username ? (
                             <View style={styles.igRow}>
                                 <AtSign size={11} color="#8E8E93" />
-                                <Text style={styles.igHandle}>@{item.instagram_username.replace(/^@+/, '')}</Text>
+                                <Text style={styles.igHandle}>{item.instagram_username.replace(/^@+/, '')}</Text>
                             </View>
                         ) : (
                             <Text style={styles.noIg}>No Instagram saved yet</Text>
