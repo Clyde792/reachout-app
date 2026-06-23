@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 
-const BOT_URL = 'https://reachout-bot-production.up.railway.app';
-const API_KEY = 'reachout123';
+const BOT_URL = 'https://bot.lanternscs.org';
+const API_KEY = '73d80519c6fba42e';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 

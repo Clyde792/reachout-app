@@ -4,13 +4,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { User, Smartphone, FileText, MessageCircle, Search, AlertTriangle, Trash2, Save, ArrowRight, ArrowLeft, CheckCircle, Users, UserPlus, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react-native';
 
-const RAILWAY_URL = 'https://reachout-bot-production.up.railway.app';
-const API_KEY = 'reachout123';
+const BOT_URL = 'https://bot.lanternscs.org';
+const API_KEY = '73d80519c6fba42e';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
 export default function YouthProfileScreen({ route, navigation }) {
-    const { conversation, worker, limitedView, readOnly } = route.params;
+    const { conversation, worker, limitedView, readOnly, handoverPending } = route.params;
     const [isLimited, setIsLimited] = useState(!!limitedView);
     const { colors, isDark } = useTheme();
 
@@ -33,6 +33,8 @@ export default function YouthProfileScreen({ route, navigation }) {
     const [loadingNotes, setLoadingNotes] = useState(false);
     const [workersList, setWorkersList] = useState([]);
     const [loadingWorkers, setLoadingWorkers] = useState(false);
+    const [deletingNoteId, setDeletingNoteId] = useState(null);
+    const [workerDisplayName, setWorkerDisplayName] = useState(worker?.email || 'Worker');
 
     useEffect(() => {
         if (activeTab === 'notes') fetchNotes();
@@ -41,6 +43,28 @@ export default function YouthProfileScreen({ route, navigation }) {
             checkExistingPendingRequest();
         }
     }, [activeTab]);
+
+    useEffect(() => {
+        fetchNotes();
+    }, []);
+
+    useEffect(() => {
+        fetchWorkerDisplayName();
+    }, []);
+
+    async function fetchWorkerDisplayName() {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker?.email)}&select=name`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            const name = Array.isArray(data) && data[0]?.name ? data[0].name : null;
+            if (name) setWorkerDisplayName(name);
+        } catch (e) {
+            console.error('Fetch worker display name error:', e);
+        }
+    }
 
     async function checkExistingPendingRequest() {
         setCheckingPending(true);
@@ -77,7 +101,7 @@ export default function YouthProfileScreen({ route, navigation }) {
         setLoadingNotes(true);
         try {
             const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/notes?chat_id=eq.${conversation.chat_id}&order=created_at.desc`,
+                `${SUPABASE_URL}/rest/v1/notes?chat_id=eq.${conversation.chat_id}&order=is_handover_note.desc,created_at.desc`,
                 { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
             );
             const data = await res.json();
@@ -96,7 +120,7 @@ export default function YouthProfileScreen({ route, navigation }) {
                 body: JSON.stringify({
                     chat_id: conversation.chat_id,
                     worker_email: worker?.email || '',
-                    worker_name: worker?.user_metadata?.name || worker?.email || 'Unknown Worker',
+                    worker_name: workerDisplayName,
                     content: newNote.trim(),
                 }),
             });
@@ -131,7 +155,7 @@ export default function YouthProfileScreen({ route, navigation }) {
         if (!igUsername.trim()) return;
         setAnalysing(true);
         try {
-            const res = await fetch(`${RAILWAY_URL}/analyze-social`, {
+            const res = await fetch(`${BOT_URL}/analyze-social`, {
                 method: 'POST',
                 headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ chatId: conversation.chat_id, instagram_username: igUsername.trim() }),
@@ -147,7 +171,7 @@ export default function YouthProfileScreen({ route, navigation }) {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/handover_requests`, {
                 method: 'POST',
-                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
                 body: JSON.stringify({
                     chat_id: conversation.chat_id,
                     from_worker: worker?.email || 'Unknown',
@@ -162,6 +186,23 @@ export default function YouthProfileScreen({ route, navigation }) {
                 setTransferring(false);
                 return;
             }
+            const created = await res.json();
+            const handoverRequestId = Array.isArray(created) && created[0] ? created[0].id : null;
+
+            // Mirror the note into the Notes tab, tagged so it's highlighted there too
+            await fetch(`${SUPABASE_URL}/rest/v1/notes`, {
+                method: 'POST',
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({
+                    chat_id: conversation.chat_id,
+                    worker_email: worker?.email || '',
+                    worker_name: workerDisplayName,
+                    content: handoverNote,
+                    is_handover_note: true,
+                    handover_request_id: handoverRequestId,
+                }),
+            });
+
             setTransferring(false);
             setTransferred(true);
             setShowVerifyModal(false);
@@ -175,6 +216,16 @@ export default function YouthProfileScreen({ route, navigation }) {
                 headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body: JSON.stringify({ assigned_worker: worker?.email }),
             });
+
+            fetch(`${BOT_URL}/worker-intro`, {
+                method: 'POST',
+                headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chatId: conversation.chat_id,
+                    workerName: workerDisplayName,
+                }),
+            }).catch(e => console.error('Worker intro error:', e));
+
             setIsLimited(false);
         } catch (e) {
             console.error('Take case error:', e);
@@ -209,6 +260,8 @@ export default function YouthProfileScreen({ route, navigation }) {
         if (!username) return '?';
         return username.slice(0, 2).toUpperCase();
     }
+
+    const latestHandoverNote = notes.find(n => n.is_handover_note);
 
     const tabs = readOnly
         ? [
@@ -337,10 +390,26 @@ export default function YouthProfileScreen({ route, navigation }) {
                             ))}
                         </View>
                     ) : null}
+
+                    {!isLimited && latestHandoverNote && (
+                        <View style={[styles.card, styles.handoverNoteCard, { marginTop: 12 }]}>
+                            <View style={styles.handoverBadge}>
+                                <Users size={12} color="#fff" />
+                                <Text style={styles.handoverBadgeText}>Handover Note</Text>
+                            </View>
+                            <Text style={[styles.noteContent, { color: colors.text }]}>{latestHandoverNote.content}</Text>
+                            <Text style={[styles.noteTime, { marginTop: 6 }]}>
+                                By {latestHandoverNote.worker_name} · {formatNoteTime(latestHandoverNote.created_at)}
+                            </Text>
+                        </View>
+                    )}
+
                     {readOnly ? (
                         <View style={styles.readOnlyNotice}>
                             <Text style={styles.readOnlyNoticeText}>
-                                This case has been handed over. You're viewing in read-only mode.
+                                {handoverPending
+                                    ? "A handover request is pending for this case — you're previewing it read-only. Go back to My Cases to accept or decline."
+                                    : "This case has been handed over. You're viewing in read-only mode."}
                             </Text>
                         </View>
 
@@ -362,8 +431,12 @@ export default function YouthProfileScreen({ route, navigation }) {
 
             {/* Notes Tab */}
             {activeTab === 'notes' && (
-                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={120}>
-                    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined}>
+                    <ScrollView
+                        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+                        keyboardShouldPersistTaps="handled"
+                        automaticallyAdjustKeyboardInsets
+                    >
                         {!readOnly && (
                             <View style={[styles.card, { backgroundColor: colors.card, marginBottom: 16 }]}>
                                 <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 10 }]}>New Note</Text>
@@ -396,16 +469,30 @@ export default function YouthProfileScreen({ route, navigation }) {
                             </View>
                         ) : (
                             notes.map(note => (
-                                <View key={note.id} style={[styles.noteCard, { backgroundColor: colors.card }]}>
+                                <View
+                                    key={note.id}
+                                    style={[
+                                        styles.noteCard,
+                                        { backgroundColor: colors.card },
+                                        note.is_handover_note && styles.handoverNoteCard,
+                                    ]}>
+                                    {note.is_handover_note && (
+                                        <View style={styles.handoverBadge}>
+                                            <Users size={12} color="#fff" />
+                                            <Text style={styles.handoverBadgeText}>Handover Note</Text>
+                                        </View>
+                                    )}
                                     <View style={styles.noteHeader}>
                                         <Text style={[styles.noteWorker, { color: colors.text }]}>{note.worker_name}</Text>
                                         <View style={styles.noteActions}>
                                             <Text style={styles.noteTime}>{formatNoteTime(note.created_at)}</Text>
-                                            <TouchableOpacity onPress={() => deleteNote(note.id)} disabled={deletingNoteId === note.id}>
-                                                {deletingNoteId === note.id
-                                                    ? <ActivityIndicator size="small" color="#FF3B30" />
-                                                    : <Trash2 size={15} color="#FF3B30" />}
-                                            </TouchableOpacity>
+                                            {!note.is_handover_note && (
+                                                <TouchableOpacity onPress={() => deleteNote(note.id)} disabled={deletingNoteId === note.id}>
+                                                    {deletingNoteId === note.id
+                                                        ? <ActivityIndicator size="small" color="#FF3B30" />
+                                                        : <Trash2 size={15} color="#FF3B30" />}
+                                                </TouchableOpacity>
+                                            )}
                                         </View>
                                     </View>
                                     <Text style={[styles.noteContent, { color: colors.text }]}>{note.content}</Text>
@@ -418,70 +505,79 @@ export default function YouthProfileScreen({ route, navigation }) {
 
             {/* Handover Tab */}
             {activeTab === 'handover' && (
-                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-                    {checkingPending ? (
-                        <ActivityIndicator color="#007AFF" style={{ marginTop: 32 }} />
-                    ) : existingPendingRequest ? (
-                        <View style={styles.transferredBanner}>
-                            <CheckCircle size={20} color="#FF9500" />
-                            <Text style={styles.transferredText}>
-                                Handover request already sent to {existingPendingRequest.to_worker}, awaiting response.
-                            </Text>
-                        </View>
-                    ) : transferred ? (
-                        <View style={styles.transferredBanner}>
-                            <CheckCircle size={20} color="#34C759" />
-                            <Text style={styles.transferredText}>Handover request sent to {selectedWorker?.name}</Text>
-                        </View>
-                    ) : (
-                        <View style={[styles.card, { backgroundColor: colors.card }]}>
-                            <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 12 }]}>Select Worker</Text>
-                            {loadingWorkers ? (
-                                <ActivityIndicator color="#007AFF" style={{ marginVertical: 16 }} />
-                            ) : workersList.filter(w => w.email !== worker?.email).length === 0 ? (
-                                <Text style={{ color: colors.subtext, fontSize: 13, marginBottom: 12 }}>
-                                    No other workers found. Add workers in Manage Workers.
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'height' : undefined}>
+                    <ScrollView
+                        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+                        keyboardShouldPersistTaps="handled"
+                        automaticallyAdjustKeyboardInsets
+                    >
+                        {checkingPending ? (
+                            <ActivityIndicator color="#007AFF" style={{ marginTop: 32 }} />
+                        ) : existingPendingRequest ? (
+                            <View style={styles.transferredBanner}>
+                                <CheckCircle size={20} color="#FF9500" />
+                                <Text style={styles.transferredText}>
+                                    Handover request already sent to {existingPendingRequest.to_worker}, awaiting response.
                                 </Text>
-                            ) : (
-                                workersList.filter(w => w.email !== worker?.email).map(w => (
-                                    <TouchableOpacity
-                                        key={w.id}
-                                        style={[styles.workerOption, { borderColor: colors.border }, selectedWorker?.id === w.id && styles.workerOptionSelected]}
-                                        onPress={() => setSelectedWorker(w)}>
-                                        <View style={styles.workerAvatar}>
-                                            <Text style={styles.workerAvatarText}>{w.name.slice(0, 2).toUpperCase()}</Text>
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.workerName, { color: colors.text }]}>{w.name}</Text>
-                                            <Text style={styles.workerRole}>{w.role}</Text>
-                                        </View>
-                                        {selectedWorker?.id === w.id && <CheckCircle size={18} color="#007AFF" />}
-                                    </TouchableOpacity>
-                                ))
-                            )}
-
-                            <Text style={[styles.noteLabel, { color: colors.subtext, marginTop: 16 }]}>Handover Note</Text>
-                            <TextInput
-                                style={[styles.noteInput, { backgroundColor: colors.input, color: colors.text }]}
-                                placeholder="Add context for the next worker..."
-                                placeholderTextColor="#8E8E93"
-                                value={handoverNote}
-                                onChangeText={setHandoverNote}
-                                multiline
-                                numberOfLines={3}
-                            />
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={[styles.nextBtn, !selectedWorker && styles.nextBtnDisabled]}
-                                    disabled={!selectedWorker}
-                                    onPress={() => setShowVerifyModal(true)}>
-                                    <Text style={styles.nextBtnText}>Review</Text>
-                                    <ArrowRight size={15} color="#fff" />
-                                </TouchableOpacity>
                             </View>
-                        </View>
-                    )}
-                </ScrollView>
+                        ) : transferred ? (
+                            <View style={styles.transferredBanner}>
+                                <CheckCircle size={20} color="#34C759" />
+                                <Text style={styles.transferredText}>Handover request sent to {selectedWorker?.name}</Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.card, { backgroundColor: colors.card }]}>
+                                <Text style={[styles.sectionTitle, { color: colors.subtext, marginBottom: 12 }]}>Select Worker</Text>
+                                {loadingWorkers ? (
+                                    <ActivityIndicator color="#007AFF" style={{ marginVertical: 16 }} />
+                                ) : workersList.filter(w => w.email !== worker?.email).length === 0 ? (
+                                    <Text style={{ color: colors.subtext, fontSize: 13, marginBottom: 12 }}>
+                                        No other workers found. Add workers in Manage Workers.
+                                    </Text>
+                                ) : (
+                                    workersList.filter(w => w.email !== worker?.email).map(w => (
+                                        <TouchableOpacity
+                                            key={w.id}
+                                            style={[styles.workerOption, { borderColor: colors.border }, selectedWorker?.id === w.id && styles.workerOptionSelected]}
+                                            onPress={() => setSelectedWorker(w)}>
+                                            <View style={styles.workerAvatar}>
+                                                <Text style={styles.workerAvatarText}>{w.name.slice(0, 2).toUpperCase()}</Text>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.workerName, { color: colors.text }]}>{w.name}</Text>
+                                                <Text style={styles.workerRole}>{w.role}</Text>
+                                            </View>
+                                            {selectedWorker?.id === w.id && <CheckCircle size={18} color="#007AFF" />}
+                                        </TouchableOpacity>
+                                    ))
+                                )}
+
+                                <Text style={[styles.noteLabel, { color: colors.subtext, marginTop: 16 }]}>Handover Note (required)</Text>
+                                <TextInput
+                                    style={[styles.noteInput, { backgroundColor: colors.input, color: colors.text }]}
+                                    placeholder="Add context for the next worker..."
+                                    placeholderTextColor="#8E8E93"
+                                    value={handoverNote}
+                                    onChangeText={setHandoverNote}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                                {!handoverNote.trim() && (
+                                    <Text style={styles.requiredHint}>A note is required so the next worker has context.</Text>
+                                )}
+                                <View style={styles.modalButtons}>
+                                    <TouchableOpacity
+                                        style={[styles.nextBtn, (!selectedWorker || !handoverNote.trim()) && styles.nextBtnDisabled]}
+                                        disabled={!selectedWorker || !handoverNote.trim()}
+                                        onPress={() => setShowVerifyModal(true)}>
+                                        <Text style={styles.nextBtnText}>Review</Text>
+                                        <ArrowRight size={15} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+                    </ScrollView>
+                </KeyboardAvoidingView>
             )}
 
             {/* Verify Modal */}
@@ -616,6 +712,10 @@ const styles = StyleSheet.create({
     noteActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     noteTime: { fontSize: 11, color: '#8E8E93' },
     noteContent: { fontSize: 14, lineHeight: 20 },
+    handoverNoteCard: { borderLeftWidth: 4, borderLeftColor: '#FF9500', backgroundColor: 'rgba(255,149,0,0.06)' },
+    handoverBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FF9500', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 8 },
+    handoverBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    requiredHint: { fontSize: 12, color: '#FF9500', marginTop: 4, marginBottom: 4 },
     transferredBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(52,199,89,0.1)', borderRadius: 14, padding: 16 },
     transferredText: { fontSize: 15, color: '#34C759', fontWeight: '600' },
     workerOption: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },

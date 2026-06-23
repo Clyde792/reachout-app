@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -18,6 +18,7 @@ export default function MyCasesScreen({ navigation, worker }) {
     const [respondingId, setRespondingId] = useState(null);
     const [activeTab, setActiveTab] = useState('active');
     const [workerNames, setWorkerNames] = useState({});
+    const [acceptedInfo, setAcceptedInfo] = useState(null);
     const { colors, isDark } = useTheme();
 
     useFocusEffect(
@@ -51,7 +52,7 @@ export default function MyCasesScreen({ navigation, worker }) {
         if (!Array.isArray(data) || data.length === 0) return [];
         const chatIds = [...new Set(data.map(r => r.chat_id))];
         const convRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/conversations?chat_id=in.(${chatIds.join(',')})&select=chat_id,username,display_name`,
+            `${SUPABASE_URL}/rest/v1/conversations?chat_id=in.(${chatIds.join(',')})&select=*`,
             { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
         );
         const convData = await convRes.json();
@@ -59,6 +60,20 @@ export default function MyCasesScreen({ navigation, worker }) {
             ...req,
             conversation: Array.isArray(convData) ? convData.find(c => c.chat_id === req.chat_id) : null,
         }));
+    }
+
+    async function fetchFullConversation(chatId) {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${chatId}&select=*`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            return Array.isArray(data) && data[0] ? data[0] : null;
+        } catch (e) {
+            console.error('Fetch full conversation error:', e);
+            return null;
+        }
     }
 
     async function fetchMyCases() {
@@ -175,6 +190,14 @@ export default function MyCasesScreen({ navigation, worker }) {
                         role: 'previous_worker',
                     }),
                 });
+
+                const fullConv = await fetchFullConversation(request.chat_id);
+                setAcceptedInfo({
+                    youthName: request.conversation?.display_name || request.conversation?.username || 'this youth',
+                    fromWorkerName: workerNames[request.from_worker] || request.from_worker,
+                    note: request.note,
+                    conversation: fullConv || request.conversation,
+                });
             }
 
             await fetchPendingRequests();
@@ -288,12 +311,22 @@ export default function MyCasesScreen({ navigation, worker }) {
                                 </Text>
                             </View>
                             {pendingRequests.map(req => (
-                                <View key={req.id} style={[styles.requestCard, { backgroundColor: colors.card }]}>
+                                <TouchableOpacity
+                                    key={req.id}
+                                    style={[styles.requestCard, { backgroundColor: colors.card }]}
+                                    activeOpacity={0.7}
+                                    disabled={!req.conversation}
+                                    onPress={() => navigation.navigate('YouthProfile', {
+                                        conversation: req.conversation,
+                                        worker,
+                                        readOnly: true,
+                                        handoverPending: true,
+                                    })}>
                                     <View style={styles.requestInfo}>
                                         <Text style={[styles.requestName, { color: colors.text }]}>
                                             {req.conversation?.display_name || req.conversation?.username || 'Unknown youth'}
                                         </Text>
-                                        <Text style={styles.requestFrom}>from {req.from_worker}</Text>
+                                        <Text style={styles.requestFrom}>from {req.from_worker} · tap to view summary</Text>
                                         {req.note ? <Text style={[styles.requestNote, { color: colors.subtext }]}>"{req.note}"</Text> : null}
                                     </View>
                                     <View style={styles.requestActions}>
@@ -312,7 +345,7 @@ export default function MyCasesScreen({ navigation, worker }) {
                                                 : <Check size={16} color="#fff" />}
                                         </TouchableOpacity>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     )}
@@ -370,6 +403,42 @@ export default function MyCasesScreen({ navigation, worker }) {
                 />
             )}
 
+            <Modal visible={!!acceptedInfo} animationType="fade" transparent>
+                <View style={styles.acceptedOverlay}>
+                    <View style={[styles.acceptedBox, { backgroundColor: colors.card }]}>
+                        <View style={styles.acceptedIconWrap}>
+                            <Check size={22} color="#fff" />
+                        </View>
+                        <Text style={[styles.acceptedTitle, { color: colors.text }]}>Case accepted</Text>
+                        <Text style={[styles.acceptedSubtitle, { color: colors.subtext }]}>
+                            {acceptedInfo?.youthName} is now your case
+                        </Text>
+                        {acceptedInfo?.note ? (
+                            <View style={styles.acceptedNoteCard}>
+                                <View style={styles.handoverBadge}>
+                                    <Repeat size={12} color="#fff" />
+                                    <Text style={styles.handoverBadgeText}>Note from {acceptedInfo.fromWorkerName}</Text>
+                                </View>
+                                <Text style={[styles.acceptedNoteText, { color: colors.text }]}>{acceptedInfo.note}</Text>
+                            </View>
+                        ) : null}
+                        <View style={styles.acceptedButtons}>
+                            <TouchableOpacity style={styles.acceptedSecondaryBtn} onPress={() => setAcceptedInfo(null)}>
+                                <Text style={styles.acceptedSecondaryText}>Got it</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.acceptedPrimaryBtn}
+                                onPress={() => {
+                                    const conv = acceptedInfo?.conversation;
+                                    setAcceptedInfo(null);
+                                    if (conv) navigation.navigate('YouthProfile', { conversation: conv, worker });
+                                }}>
+                                <Text style={styles.acceptedPrimaryText}>View Case</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
         </View>
     );
@@ -435,4 +504,18 @@ const styles = StyleSheet.create({
     moodTrack: { flex: 1, height: 6, backgroundColor: '#3A3A3C', borderRadius: 3, overflow: 'hidden' },
     moodFill: { height: 6, borderRadius: 3 },
     moodScore: { fontSize: 11, color: '#8E8E93', width: 24, textAlign: 'right' },
+    acceptedOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    acceptedBox: { width: '100%', borderRadius: 20, padding: 24, alignItems: 'center' },
+    acceptedIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#34C759', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    acceptedTitle: { fontSize: 18, fontWeight: '700' },
+    acceptedSubtitle: { fontSize: 13, marginTop: 4, marginBottom: 14, textAlign: 'center' },
+    acceptedNoteCard: { width: '100%', backgroundColor: 'rgba(255,149,0,0.08)', borderLeftWidth: 4, borderLeftColor: '#FF9500', borderRadius: 10, padding: 12, marginBottom: 16 },
+    handoverBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FF9500', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 8 },
+    handoverBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    acceptedNoteText: { fontSize: 14, lineHeight: 20 },
+    acceptedButtons: { flexDirection: 'row', gap: 10, width: '100%' },
+    acceptedSecondaryBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, padding: 14, backgroundColor: 'rgba(142,142,147,0.15)' },
+    acceptedSecondaryText: { fontSize: 15, fontWeight: '600', color: '#8E8E93' },
+    acceptedPrimaryBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, padding: 14, backgroundColor: '#007AFF' },
+    acceptedPrimaryText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });

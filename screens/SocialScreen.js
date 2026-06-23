@@ -6,8 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { Smartphone, Search, AlertTriangle, ChevronRight, ArrowLeft, AtSign } from 'lucide-react-native';
 
-const RAILWAY_URL = 'https://reachout-bot-production.up.railway.app';
-const API_KEY = 'reachout123';
+const BOT_URL = 'https://bot.lanternscs.org';
+const API_KEY = '73d80519c6fba42e';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
@@ -58,7 +58,7 @@ export default function SocialScreen({ worker }) {
         if (!igUsername.trim()) return;
         setAnalysing(true);
         try {
-            const res = await fetch(`${RAILWAY_URL}/analyze-social`, {
+            const res = await fetch(`${BOT_URL}/analyze-social`, {
                 method: 'POST',
                 headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ chatId: selected.chat_id, instagram_username: igUsername.trim() }),
@@ -287,3 +287,28 @@ const styles = StyleSheet.create({
     socialError: { fontSize: 14, color: '#FF3B30', fontWeight: '600' },
     errorHint: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
