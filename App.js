@@ -54,9 +54,9 @@ function BubbleTabBar({ state, descriptors, navigation, isDark }) {
                 size={22}
                 color={focused ? activeColor : inactiveColor}
               />
-              {focused && (
-                <Text style={[tabStyles.label, { color: activeColor }]}>{tab.label}</Text>
-              )}
+              <Text numberOfLines={1} style={[tabStyles.label, { color: focused ? activeColor : inactiveColor }]}>
+                {tab.label}
+              </Text>
             </View>
           </TouchableOpacity>
         );
@@ -89,15 +89,16 @@ const tabStyles = StyleSheet.create({
     alignItems: 'center',
   },
   bubble: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 24,
-    gap: 6,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 3,
   },
   label: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
   },
 });
