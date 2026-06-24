@@ -67,6 +67,14 @@ export default function TeamChatScreen({ route }) {
     }
 
     function renderMessage({ item }) {
+        // System notes (joins / leaves) render as a centered grey pill.
+        if ((item.content || '').startsWith('__sys__')) {
+            return (
+                <View style={styles.systemRow}>
+                    <Text style={[styles.systemText, { color: colors.subtext }]}>{item.content.replace(/^__sys__/, '')}</Text>
+                </View>
+            );
+        }
         const mine = item.sender_email === myEmail;
         return (
             <View style={[styles.bubbleWrapper, mine ? styles.rightWrapper : styles.leftWrapper]}>
@@ -135,6 +143,8 @@ export default function TeamChatScreen({ route }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent' },
+    systemRow: { alignItems: 'center', marginVertical: 8 },
+    systemText: { fontSize: 12, fontStyle: 'italic', backgroundColor: 'rgba(142,142,147,0.14)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, overflow: 'hidden' },
     bubbleWrapper: { flexDirection: 'row', marginBottom: 10 },
     leftWrapper: { justifyContent: 'flex-start' },
     rightWrapper: { justifyContent: 'flex-end' },

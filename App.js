@@ -20,6 +20,7 @@ import SocialScreen from './screens/SocialScreen';
 import TeamScreen from './screens/TeamScreen';
 import TeamChatScreen from './screens/TeamChatScreen';
 import NewGroupScreen from './screens/NewGroupScreen';
+import GroupInfoScreen from './screens/GroupInfoScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -160,13 +161,32 @@ function MainTabs({ worker }) {
       <Stack.Screen
         name="TeamChat"
         component={TeamChatScreen}
-        options={({ route }) => ({
-          headerShown: true,
-          headerStyle: { backgroundColor: colors.header },
-          headerTintColor: '#D97706',
-          headerTitleStyle: { color: colors.text, fontWeight: '600' },
-          title: route.params?.title || 'Chat',
-        })}
+        options={({ route, navigation }) => {
+          const isGroup = route.params?.thread?.is_group;
+          const title = route.params?.title || 'Chat';
+          return {
+            headerShown: true,
+            headerStyle: { backgroundColor: colors.header },
+            headerTintColor: '#D97706',
+            headerTitleStyle: { color: colors.text, fontWeight: '600' },
+            title,
+            // Group chats: tapping the title opens Group Info (members / add / rename).
+            headerTitle: isGroup
+              ? () => (
+                  <TouchableOpacity
+                    style={{ alignItems: 'center' }}
+                    onPress={() => navigation.navigate('GroupInfo', {
+                      thread: route.params.thread,
+                      worker: route.params.worker,
+                      myName: route.params.myName,
+                    })}>
+                    <Text style={{ color: colors.text, fontWeight: '600', fontSize: 17 }} numberOfLines={1}>{title}</Text>
+                    <Text style={{ color: '#8E8E93', fontSize: 11 }}>Tap for group info</Text>
+                  </TouchableOpacity>
+                )
+              : undefined,
+          };
+        }}
       />
       <Stack.Screen
         name="NewGroup"
@@ -177,6 +197,17 @@ function MainTabs({ worker }) {
           headerTintColor: '#D97706',
           headerTitleStyle: { color: colors.text, fontWeight: '600' },
           title: 'New Group',
+        }}
+      />
+      <Stack.Screen
+        name="GroupInfo"
+        component={GroupInfoScreen}
+        options={{
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.header },
+          headerTintColor: '#D97706',
+          headerTitleStyle: { color: colors.text, fontWeight: '600' },
+          title: 'Group Info',
         }}
       />
     </Stack.Navigator>
