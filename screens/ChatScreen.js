@@ -63,6 +63,14 @@ export default function ChatScreen({ route }) {
         fetchMessages();
     }
 
+    // Override: pull the chat back from the bot to the worker.
+    async function takeOverFromBot() {
+        setHandingBack(true);
+        await setWorkerActive(true); // sets worker_active=true + clears bot_handling; flips botActive off
+        setHandingBack(false);
+        fetchMessages();
+    }
+
     async function fetchMessages() {
         try {
             const res = await fetch(
@@ -265,11 +273,13 @@ export default function ChatScreen({ route }) {
                     </Text>
                 </View>
                 <TouchableOpacity
-                    style={[styles.handoverBtn, botActive && styles.handoverBtnDisabled]}
-                    onPress={handBackToBot}
-                    disabled={handingBack || botActive}>
+                    style={[styles.handoverBtn, botActive && styles.takeOverBtn]}
+                    onPress={botActive ? takeOverFromBot : handBackToBot}
+                    disabled={handingBack}>
                     <Text style={styles.handoverBtnText}>
-                        {handingBack ? 'Handing back…' : botActive ? 'Bot Active' : 'Hand Back to Bot'}
+                        {handingBack
+                            ? (botActive ? 'Taking over…' : 'Handing back…')
+                            : (botActive ? 'Take Over' : 'Hand Back to Bot')}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -323,6 +333,7 @@ const styles = StyleSheet.create({
     handoverText: { fontSize: 13 },
     handoverBtn: { backgroundColor: '#D97706', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
     handoverBtnDisabled: { backgroundColor: '#C7C7CC' },
+    takeOverBtn: { backgroundColor: '#34C759' },
     handoverBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
     bubbleWrapper: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end' },
     leftWrapper: { justifyContent: 'flex-start' },
