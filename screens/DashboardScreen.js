@@ -10,6 +10,8 @@ import { calculateCompatibility, BEST_MATCH_THRESHOLD } from '../lib/mbti';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
+const BOT_URL = 'https://bot.lanternscs.org';
+const API_KEY = '73d80519c6fba42e';
 
 const MOODS = [
     { key: 'good', label: 'Good' },
@@ -21,6 +23,7 @@ export default function DashboardScreen({ navigation, worker }) {
     const [conversations, setConversations] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
     const [myMbti, setMyMbti] = useState(null);
+    const [myName, setMyName] = useState(worker?.email?.split('@')[0] || 'Someone');
     const { colors, isDark } = useTheme();
 
     const [showWellbeing, setShowWellbeing] = useState(false);
@@ -36,11 +39,12 @@ export default function DashboardScreen({ navigation, worker }) {
         if (!worker?.email) return;
         try {
             const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}&select=mbti&limit=1`,
+                `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}&select=mbti,name&limit=1`,
                 { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
             );
             const data = await res.json();
             setMyMbti(Array.isArray(data) && data[0]?.mbti ? data[0].mbti : null);
+            if (Array.isArray(data) && data[0]?.name) setMyName(data[0].name);
         } catch (e) { console.error('Fetch MBTI error:', e); }
     }
 
@@ -163,6 +167,12 @@ export default function DashboardScreen({ navigation, worker }) {
                                     body: JSON.stringify({ assigned_worker: worker?.email }),
                                 }
                             );
+                            // Send the youth a warm intro for their new caring person.
+                            fetch(`${BOT_URL}/worker-intro`, {
+                                method: 'POST',
+                                headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ chatId: item.chat_id, workerName: myName }),
+                            }).catch(e => console.error('Worker intro error:', e));
                             fetchConversations();
                         } catch (e) {
                             console.error('Take case error:', e);
