@@ -120,6 +120,15 @@ export default function ChatScreen({ route }) {
                 {
                     text: 'Delete', style: 'destructive', onPress: async () => {
                         setMessages(prev => prev.filter(m => m.id !== item.id));
+                        // Also remove the youth's Telegram copy (best-effort) so it
+                        // disappears on both ends.
+                        if (item.telegram_message_id) {
+                            fetch(`${BOT_URL}/delete-telegram`, {
+                                method: 'POST',
+                                headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ chatId: conversation.chat_id, messageId: item.telegram_message_id }),
+                            }).catch(e => console.error('Telegram delete error:', e));
+                        }
                         try {
                             await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${item.id}`, {
                                 method: 'DELETE',

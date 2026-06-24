@@ -291,19 +291,6 @@ export default function MyCasesScreen({ navigation, worker }) {
                         </View>
                     </View>
                 </View>
-
-                <View style={styles.progressSection}>
-                    <View style={styles.moodRow}>
-                        <Text style={styles.moodLabel}>Mood</Text>
-                        <View style={styles.moodTrack}>
-                            <View style={[styles.moodFill, {
-                                width: `${item.mood_score || 50}%`,
-                                backgroundColor: item.mood_score >= 60 ? '#34C759' : item.mood_score >= 40 ? '#FF9500' : '#FF3B30'
-                            }]} />
-                        </View>
-                        <Text style={styles.moodScore}>{item.mood_score || 50}</Text>
-                    </View>
-                </View>
             </TouchableOpacity>
         );
     }
