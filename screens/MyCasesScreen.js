@@ -8,6 +8,8 @@ import { AlertTriangle, Clock, Repeat, Check, X, Search } from 'lucide-react-nat
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
+const BOT_URL = 'https://bot.lanternscs.org';
+const API_KEY = '73d80519c6fba42e';
 
 const RISK_FILTERS = [
     { key: 'all', label: 'All', color: null },
@@ -192,6 +194,15 @@ export default function MyCasesScreen({ navigation, worker }) {
                         role: 'previous_worker',
                     }),
                 });
+
+                // Let the youth know (via the bot) that someone new who cares is
+                // now also there for them. Best-effort, non-blocking.
+                const newWorkerName = workerNames[worker?.email] || worker?.email?.split('@')[0] || 'Someone';
+                fetch(`${BOT_URL}/handover-intro`, {
+                    method: 'POST',
+                    headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId: request.chat_id, workerName: newWorkerName }),
+                }).catch(e => console.error('Handover intro notify error:', e));
 
                 const fullConv = await fetchFullConversation(request.chat_id);
                 setAcceptedInfo({
