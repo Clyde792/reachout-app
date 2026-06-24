@@ -17,6 +17,9 @@ import YouthProfileScreen from './screens/YouthProfileScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import MyCasesScreen from './screens/MyCasesScreen';
 import SocialScreen from './screens/SocialScreen';
+import TeamScreen from './screens/TeamScreen';
+import TeamChatScreen from './screens/TeamChatScreen';
+import NewGroupScreen from './screens/NewGroupScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -24,6 +27,7 @@ const Stack = createStackNavigator();
 const TABS = [
   { name: 'Dashboard', label: 'Home', icon: 'home', iconOutline: 'home-outline' },
   { name: 'MyCases', label: 'My Cases', icon: 'people', iconOutline: 'people-outline' },
+  { name: 'Team', label: 'Team', icon: 'chatbubbles', iconOutline: 'chatbubbles-outline' },
   { name: 'Social', label: 'Analysis', icon: 'analytics', iconOutline: 'analytics-outline' },
   { name: 'Profile', label: 'Profile', icon: 'person', iconOutline: 'person-outline' },
 ];
@@ -119,6 +123,9 @@ function MainTabs({ worker }) {
             <Tab.Screen name="MyCases">
               {p => <MyCasesScreen {...p} worker={worker} />}
             </Tab.Screen>
+            <Tab.Screen name="Team">
+              {p => <TeamScreen {...p} worker={worker} />}
+            </Tab.Screen>
             <Tab.Screen name="Social">
               {p => <SocialScreen {...p} worker={worker} />}
             </Tab.Screen>
@@ -149,6 +156,28 @@ function MainTabs({ worker }) {
           headerTitleStyle: { color: colors.text, fontWeight: '600' },
           title: route.params?.conversation?.display_name || route.params?.conversation?.username || 'Conversation',
         })}
+      />
+      <Stack.Screen
+        name="TeamChat"
+        component={TeamChatScreen}
+        options={({ route }) => ({
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.header },
+          headerTintColor: '#D97706',
+          headerTitleStyle: { color: colors.text, fontWeight: '600' },
+          title: route.params?.title || 'Chat',
+        })}
+      />
+      <Stack.Screen
+        name="NewGroup"
+        component={NewGroupScreen}
+        options={{
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.header },
+          headerTintColor: '#D97706',
+          headerTitleStyle: { color: colors.text, fontWeight: '600' },
+          title: 'New Group',
+        }}
       />
     </Stack.Navigator>
   );
@@ -202,6 +231,20 @@ export default function App() {
         console.error('Save push token error:', e);
       }
     });
+  }, [worker]);
+
+  // Presence heartbeat: keep last_seen fresh while the app is open so
+  // teammates show as "online" in the Team tab.
+  useEffect(() => {
+    if (!worker?.email) return;
+    const beat = () =>
+      supabase
+        .from('worker_profiles')
+        .upsert({ email: worker.email, last_seen: new Date().toISOString() }, { onConflict: 'email' })
+        .then(() => {}, () => {});
+    beat();
+    const interval = setInterval(beat, 60000);
+    return () => clearInterval(interval);
   }, [worker]);
 
   if (loading) return (
