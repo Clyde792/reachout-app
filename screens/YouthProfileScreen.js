@@ -316,6 +316,8 @@ export default function YouthProfileScreen({ route, navigation }) {
                             { label: 'Age', value: conversation.age || null },
                             { label: 'School', value: conversation.school || null },
                             { label: 'Language', value: conversation.preferred_language || 'English' },
+                            { label: 'Instagram', value: conversation.instagram_username ? '@' + conversation.instagram_username.replace(/^@+/, '') : null },
+                            { label: 'Other social', value: conversation.other_social_media || null },
                             { label: 'Days with SCS', value: getDaysWithOrg() },
                         ].filter(item => item.value != null).map(({ label, value }) => (
                             <View key={label} style={styles.infoRow}>
