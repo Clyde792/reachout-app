@@ -208,21 +208,27 @@ export default function TeamScreen({ navigation, worker }) {
         navigation.navigate('TeamChat', { thread, title: thread.name, subtitle: 'Group chat', worker, myName });
     }
 
-    // ---- list assembly ----
+    // ---- list assembly: one unified list (DMs + groups) sorted by most recent ----
     const otherProfiles = profiles.filter(p => p.email && p.email !== myEmail);
     const q = search.trim().toLowerCase();
-    const dmRows = otherProfiles
-        .filter(p => !q || (p.name || '').toLowerCase().includes(q))
-        .map(p => ({ profile: p, thread: dmThreads[p.email] || null }))
-        .sort((a, b) => {
-            const at = a.thread?.last_message_time, bt = b.thread?.last_message_time;
-            if (at && bt) return new Date(bt) - new Date(at);
-            if (at) return -1;
-            if (bt) return 1;
-            return (a.profile.name || '').localeCompare(b.profile.name || '');
-        });
-    const groupRows = groups.filter(g => !q || (g.name || '').toLowerCase().includes(q));
     const onlineCount = otherProfiles.filter(p => isOnline(p.email)).length;
+
+    const groupItems = groups.map(g => ({
+        key: 'g:' + g.id, type: 'group', thread: g,
+        name: g.name || 'Group', time: g.last_message_time,
+    }));
+    const dmItems = otherProfiles.map(p => {
+        const t = dmThreads[p.email] || null;
+        return { key: 'd:' + p.email, type: 'dm', profile: p, thread: t, name: p.name, time: t?.last_message_time };
+    });
+    const rows = [...groupItems, ...dmItems]
+        .filter(it => !q || (it.name || '').toLowerCase().includes(q))
+        .sort((a, b) => {
+            if (a.time && b.time) return new Date(b.time) - new Date(a.time);
+            if (a.time) return -1;
+            if (b.time) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
 
     function Avatar({ profile, group }) {
         const photo = profile && (profile.photo_base64 || profile.photo_url);
@@ -287,16 +293,7 @@ export default function TeamScreen({ navigation, worker }) {
                     <Text style={[styles.newGroupText, { color: colors.text }]}>New Group Chat</Text>
                 </TouchableOpacity>
 
-                {groupRows.length > 0 && (
-                    <>
-                        <Text style={[styles.sectionHeader, { color: colors.subtext }]}>GROUP CHATS</Text>
-                        {groupRows.map(g => (
-                            <ChatRow key={g.id} group thread={g} />
-                        ))}
-                    </>
-                )}
-
-                <Text style={[styles.sectionHeader, { color: colors.subtext }]}>DIRECT MESSAGES</Text>
+                <Text style={[styles.sectionHeader, { color: colors.subtext }]}>MESSAGES</Text>
             </View>
         );
     }
@@ -334,11 +331,11 @@ export default function TeamScreen({ navigation, worker }) {
             )}
 
             <FlatList
-                data={dmRows}
-                keyExtractor={item => item.profile.email}
-                renderItem={({ item }) => (
-                    <ChatRow profile={item.profile} thread={item.thread} online={isOnline(item.profile.email)} />
-                )}
+                data={rows}
+                keyExtractor={item => item.key}
+                renderItem={({ item }) => item.type === 'group'
+                    ? <ChatRow group thread={item.thread} />
+                    : <ChatRow profile={item.profile} thread={item.thread} online={isOnline(item.profile.email)} />}
                 ListHeaderComponent={ListHeader}
                 style={{ flex: 1, backgroundColor: 'transparent' }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadAll(); }} tintColor="#D97706" />}
