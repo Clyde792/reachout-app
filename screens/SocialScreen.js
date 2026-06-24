@@ -4,7 +4,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
-import { Smartphone, Search, AlertTriangle, ChevronRight, ArrowLeft, AtSign } from 'lucide-react-native';
+import { Search, AlertTriangle, ChevronRight, ArrowLeft, AtSign } from 'lucide-react-native';
 
 const BOT_URL = 'https://bot.lanternscs.org';
 const API_KEY = '73d80519c6fba42e';
@@ -208,12 +208,6 @@ export default function SocialScreen({ worker }) {
     // ---- List view (no youth selected yet) ----
     const listView = (
         <View style={{ flex: 1 }}>
-            <Image
-                source={require('../assets/lantern-mark.png')}
-                style={styles.bgLantern}
-                resizeMode="contain"
-                pointerEvents="none"
-            />
             <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: 'transparent' }]}>
                 <Text style={styles.headerEyebrow}>LANTERN</Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Social Media Check</Text>
@@ -226,10 +220,10 @@ export default function SocialScreen({ worker }) {
                     data={cases}
                     keyExtractor={item => String(item.chat_id)}
                     renderItem={renderYouthItem}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+                    contentContainerStyle={{ padding: 16, paddingBottom: 32, flexGrow: 1 }}
                     ListEmptyComponent={
                         <View style={styles.empty}>
-                            <Smartphone size={48} color="#C7C7CC" />
+                            <Image source={require('../assets/lantern-mark.png')} style={styles.emptyLantern} resizeMode="contain" />
                             <Text style={[styles.emptyTitle, { color: colors.text }]}>No cases yet</Text>
                             <Text style={styles.emptySub}>Take a case from Home to run a social media check</Text>
                         </View>
@@ -258,7 +252,6 @@ const styles = StyleSheet.create({
     backBtn: { padding: 4 },
     headerEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: '#D97706', marginBottom: 2 },
     headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5 },
-    bgLantern: { position: 'absolute', alignSelf: 'center', top: '32%', width: 200, height: 200, opacity: 0.4 },
     headerSub: { fontSize: 13, color: '#8E8E93', marginTop: 2 },
     card: { borderRadius: 16, padding: 14, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     cardRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -268,9 +261,10 @@ const styles = StyleSheet.create({
     igRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
     igHandle: { fontSize: 12, color: '#8E8E93' },
     noIg: { fontSize: 12, color: '#C7C7CC', marginTop: 3 },
-    empty: { alignItems: 'center', marginTop: 80, gap: 12 },
-    emptyTitle: { fontSize: 17, fontWeight: '600' },
-    emptySub: { fontSize: 14, color: '#8E8E93', textAlign: 'center', paddingHorizontal: 32 },
+    empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 6, paddingBottom: 60 },
+    emptyLantern: { width: 200, height: 200, opacity: 0.4, marginBottom: 4 },
+    emptyTitle: { fontSize: 17, fontWeight: '600', opacity: 0.55 },
+    emptySub: { fontSize: 14, color: '#8E8E93', opacity: 0.85, textAlign: 'center' },
     hint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
     inputCard: { borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
     socialInput: { borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10 },
