@@ -119,7 +119,7 @@ export default function ChatScreen({ route }) {
         try {
             const url = await pickAndUploadChatImage();
             if (url) {
-                await fetch(`${BOT_URL}/send-photo`, {
+                const res = await fetch(`${BOT_URL}/send-photo`, {
                     method: 'POST',
                     headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -128,9 +128,17 @@ export default function ChatScreen({ route }) {
                         workerName: worker?.email?.split('@')[0] || 'Worker',
                     }),
                 });
+                if (!res.ok) {
+                    throw new Error(res.status === 404
+                        ? 'The bot needs to be redeployed before photos can be sent to youths.'
+                        : 'Send failed (' + res.status + ').');
+                }
                 fetchMessages();
             }
-        } catch (e) { console.error('Send image error:', e); }
+        } catch (e) {
+            console.error('Send image error:', e);
+            Alert.alert('Could not send image', e?.message || 'Something went wrong.');
+        }
         setUploading(false);
     }
 

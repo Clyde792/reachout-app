@@ -74,7 +74,7 @@ export default function TeamChatScreen({ route }) {
         try {
             const url = await pickAndUploadChatImage();
             if (url) {
-                await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
                     method: 'POST',
                     headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({
@@ -82,6 +82,10 @@ export default function TeamChatScreen({ route }) {
                         content: '', image_url: url,
                     }),
                 });
+                if (!res.ok) {
+                    const detail = await res.text();
+                    throw new Error('Save failed (' + res.status + '). ' + detail.slice(0, 200));
+                }
                 fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
                     method: 'PATCH',
                     headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
@@ -89,7 +93,10 @@ export default function TeamChatScreen({ route }) {
                 }).catch(() => {});
                 fetchMessages();
             }
-        } catch (e) { console.error('Send image error:', e); }
+        } catch (e) {
+            console.error('Send image error:', e);
+            Alert.alert('Could not send image', e?.message || 'Something went wrong.');
+        }
         setUploading(false);
     }
 
