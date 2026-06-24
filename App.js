@@ -117,7 +117,7 @@ function MainTabs({ worker }) {
         {props => (
           <Tab.Navigator
             tabBar={tabProps => <BubbleTabBar {...tabProps} isDark={isDark} />}
-            screenOptions={{ headerShown: false }}>
+            screenOptions={{ headerShown: false, animation: 'shift' }}>
             <Tab.Screen name="Dashboard">
               {p => <DashboardScreen {...p} worker={worker} />}
             </Tab.Screen>
