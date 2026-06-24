@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Send, ImagePlus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { pickAndUploadChatImage } from '../lib/chatImage';
+import ImageViewer from '../components/ImageViewer';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -16,6 +17,7 @@ export default function TeamChatScreen({ route }) {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [viewerUri, setViewerUri] = useState(null);
     const flatListRef = useRef(null);
 
     const myEmail = worker?.email || '';
@@ -137,7 +139,9 @@ export default function TeamChatScreen({ route }) {
                             <Text style={styles.senderName}>{item.sender_name || item.sender_email?.split('@')[0]}</Text>
                         )}
                         {item.image_url ? (
-                            <Image source={{ uri: item.image_url }} style={styles.bubbleImage} resizeMode="cover" />
+                            <TouchableOpacity activeOpacity={0.85} onPress={() => setViewerUri(item.image_url)}>
+                                <Image source={{ uri: item.image_url }} style={styles.bubbleImage} resizeMode="cover" />
+                            </TouchableOpacity>
                         ) : null}
                         {item.content ? (
                             <Text style={[styles.bubbleText, mine ? styles.mineText : { color: colors.text }]}>
@@ -189,6 +193,7 @@ export default function TeamChatScreen({ route }) {
                     <Send size={18} color="#fff" />
                 </TouchableOpacity>
             </View>
+            <ImageViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
         </KeyboardAvoidingView>
     );
 

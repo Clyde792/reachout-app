@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Bot, User, Languages, Send, ImagePlus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { pickAndUploadChatImage } from '../lib/chatImage';
+import ImageViewer from '../components/ImageViewer';
 
 const BOT_URL = 'https://bot.lanternscs.org';
 const API_KEY = '73d80519c6fba42e';
@@ -17,6 +18,7 @@ export default function ChatScreen({ route }) {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [viewerUri, setViewerUri] = useState(null);
     const [translations, setTranslations] = useState({});
     const [handingBack, setHandingBack] = useState(false);
     const [botActive, setBotActive] = useState(false);
@@ -201,7 +203,9 @@ export default function ChatScreen({ route }) {
                             </View>
                         )}
                         {item.image_url ? (
-                            <Image source={{ uri: item.image_url }} style={styles.bubbleImage} resizeMode="cover" />
+                            <TouchableOpacity activeOpacity={0.85} onPress={() => setViewerUri(item.image_url)}>
+                                <Image source={{ uri: item.image_url }} style={styles.bubbleImage} resizeMode="cover" />
+                            </TouchableOpacity>
                         ) : null}
                         {(item.content?.replace(/^\[Worker [^\]]+\]: /, '') || '') ? (
                             <Text style={[styles.bubbleText, isYouth ? { color: colors.text } : styles.botText]}>
@@ -286,6 +290,7 @@ export default function ChatScreen({ route }) {
                     <Send size={18} color="#fff" />
                 </TouchableOpacity>
             </View>
+            <ImageViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
         </KeyboardAvoidingView>
     );
 
