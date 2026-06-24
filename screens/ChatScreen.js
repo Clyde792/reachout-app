@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bot, User, Languages, Send } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -111,6 +111,27 @@ export default function ChatScreen({ route }) {
         setSending(false);
     }
 
+    function confirmDelete(item) {
+        Alert.alert(
+            'Delete message',
+            'Delete this message? It will be removed here, but the youth may have already seen it on Telegram.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete', style: 'destructive', onPress: async () => {
+                        setMessages(prev => prev.filter(m => m.id !== item.id));
+                        try {
+                            await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${item.id}`, {
+                                method: 'DELETE',
+                                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: 'return=minimal' },
+                            });
+                        } catch (e) { console.error('Delete message error:', e); fetchMessages(); }
+                    },
+                },
+            ]
+        );
+    }
+
     function renderMessage({ item }) {
         const isYouth = item.role === 'user';
         const isWorker = item.content?.startsWith('[Worker');
@@ -124,10 +145,13 @@ export default function ChatScreen({ route }) {
                     </View>
                 )}
                 <View style={{ maxWidth: '75%' }}>
-                    <View style={[
-                        styles.bubble,
-                        isYouth ? [styles.youthBubble, { backgroundColor: colors.card }] : isWorker ? styles.workerBubble : styles.botBubble,
-                    ]}>
+                    <TouchableOpacity
+                        activeOpacity={isWorker ? 0.7 : 1}
+                        onLongPress={isWorker ? () => confirmDelete(item) : undefined}
+                        style={[
+                            styles.bubble,
+                            isYouth ? [styles.youthBubble, { backgroundColor: colors.card }] : isWorker ? styles.workerBubble : styles.botBubble,
+                        ]}>
                         {!isYouth && (
                             <View style={styles.bubbleLabelRow}>
                                 {isWorker
@@ -142,7 +166,7 @@ export default function ChatScreen({ route }) {
                         <Text style={[styles.bubbleTime, isYouth ? { color: colors.subtext } : styles.bubbleTimeOnColor]}>
                             {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
-                    </View>
+                    </TouchableOpacity>
 
                     {isYouth && (
                         <View style={styles.translateRow}>

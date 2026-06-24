@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -66,6 +66,22 @@ export default function TeamChatScreen({ route }) {
         setSending(false);
     }
 
+    function confirmDelete(item) {
+        Alert.alert('Delete message', 'Delete this message for everyone?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete', style: 'destructive', onPress: async () => {
+                    setMessages(prev => prev.filter(m => m.id !== item.id));
+                    try {
+                        await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages?id=eq.${item.id}`, {
+                            method: 'DELETE', headers: { ...HEADERS, Prefer: 'return=minimal' },
+                        });
+                    } catch (e) { console.error('Delete message error:', e); fetchMessages(); }
+                },
+            },
+        ]);
+    }
+
     function renderMessage({ item }) {
         // System notes (joins / leaves) render as a centered grey pill.
         if ((item.content || '').startsWith('__sys__')) {
@@ -78,7 +94,10 @@ export default function TeamChatScreen({ route }) {
         const mine = item.sender_email === myEmail;
         return (
             <View style={[styles.bubbleWrapper, mine ? styles.rightWrapper : styles.leftWrapper]}>
-                <View style={{ maxWidth: '78%' }}>
+                <TouchableOpacity
+                    style={{ maxWidth: '78%' }}
+                    activeOpacity={mine ? 0.7 : 1}
+                    onLongPress={mine ? () => confirmDelete(item) : undefined}>
                     <View style={[styles.bubble, mine ? styles.mineBubble : [styles.theirsBubble, { backgroundColor: colors.card }]]}>
                         {!mine && isGroup && (
                             <Text style={styles.senderName}>{item.sender_name || item.sender_email?.split('@')[0]}</Text>
@@ -90,7 +109,7 @@ export default function TeamChatScreen({ route }) {
                             {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
         );
     }
