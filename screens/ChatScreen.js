@@ -24,13 +24,29 @@ export default function ChatScreen({ route }) {
     const [botActive, setBotActive] = useState(false);
     const translatingRef = useRef({});
     const flatListRef = useRef(null);
+    const botActiveRef = useRef(false);
+
+    useEffect(() => { botActiveRef.current = botActive; }, [botActive]);
 
     useEffect(() => {
         fetchMessages();
         const interval = setInterval(fetchMessages, 5000);
         setWorkerActive(true); // pause bot while worker is in this chat
+        // Heartbeat: keep the worker-active window fresh so the bot never jumps
+        // in while we're still in the chat (the flag otherwise lapses after 1h).
+        // Skips refreshing if we've handed the chat to the bot.
+        const presence = setInterval(() => {
+            if (!botActiveRef.current) {
+                fetch(`${BOT_URL}/worker-active`, {
+                    method: 'POST',
+                    headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chatId: conversation.chat_id, active: true }),
+                }).catch(() => {});
+            }
+        }, 45000);
         return () => {
             clearInterval(interval);
+            clearInterval(presence);
         };
     }, []);
 
