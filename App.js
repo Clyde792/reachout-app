@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
@@ -111,12 +111,14 @@ const tabStyles = StyleSheet.create({
 function MainTabs({ worker }) {
   const { colors, isDark } = useTheme();
 
+  const sceneBg = isDark ? '#0E0D0B' : '#F4F1EC';
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: sceneBg } }}>
       <Stack.Screen name="Tabs">
         {props => (
           <Tab.Navigator
             tabBar={tabProps => <BubbleTabBar {...tabProps} isDark={isDark} />}
+            sceneContainerStyle={{ backgroundColor: sceneBg }}
             screenOptions={{ headerShown: false, animation: 'shift' }}>
             <Tab.Screen name="Dashboard">
               {p => <DashboardScreen {...p} worker={worker} />}
@@ -234,6 +236,39 @@ function PhoneShell({ children }) {
   );
 }
 
+// Lives inside ThemeProvider so the loading screen, navigation theme, and the
+// scene/card backgrounds all follow dark mode — no white flash on load or
+// during transitions.
+function RootNavigator({ worker, loading }) {
+  const { isDark } = useTheme();
+  const bg = isDark ? '#0E0D0B' : '#F4F1EC';
+
+  if (loading) {
+    return (
+      <View style={[styles.center, { backgroundColor: bg }]}>
+        <Text style={[styles.text, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Loading...</Text>
+      </View>
+    );
+  }
+
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const navTheme = { ...base, colors: { ...base.colors, background: bg } };
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bg } }}>
+        {!worker ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        ) : (
+          <Stack.Screen name="Main">
+            {props => <MainTabs {...props} worker={worker} />}
+          </Stack.Screen>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -278,31 +313,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, [worker]);
 
-  if (loading) return (
-    <SafeAreaProvider>
-      <PhoneShell>
-        <View style={styles.center}>
-          <Text style={styles.text}>Loading...</Text>
-        </View>
-      </PhoneShell>
-    </SafeAreaProvider>
-  );
-
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <PhoneShell>
-          <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              {!worker ? (
-                <Stack.Screen name="Login" component={LoginScreen} />
-              ) : (
-                <Stack.Screen name="Main">
-                  {props => <MainTabs {...props} worker={worker} />}
-                </Stack.Screen>
-              )}
-            </Stack.Navigator>
-          </NavigationContainer>
+          <RootNavigator worker={worker} loading={loading} />
         </PhoneShell>
       </ThemeProvider>
     </SafeAreaProvider>

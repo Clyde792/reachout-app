@@ -2,24 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 const ThemeContext = createContext();
+
+// Singapore is fixed UTC+8 (no daylight saving). now.getTime() is an absolute
+// instant (epoch ms) regardless of the device's own timezone, so just shift it
+// directly by 8 hours - no local offset needed. Dark mode = outside 9-6 Mon-Fri.
+function computeIsDark() {
+    const sgTime = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const hour = sgTime.getUTCHours();
+    const day = sgTime.getUTCDay();
+    const isWorkingHours = day >= 1 && day <= 5 && hour >= 9 && hour < 18;
+    return !isWorkingHours;
+}
+
 export function ThemeProvider({ children }) {
-    const [isDark, setIsDark] = useState(false);
+    // Compute synchronously on first render so there's no light->dark flash.
+    const [isDark, setIsDark] = useState(computeIsDark);
     useEffect(() => {
-        checkTime();
-        const interval = setInterval(checkTime, 60000);
+        const interval = setInterval(() => setIsDark(computeIsDark()), 60000);
         return () => clearInterval(interval);
     }, []);
-    function checkTime() {
-        const now = new Date();
-        // Singapore is fixed UTC+8 (no daylight saving). now.getTime() is an
-        // absolute instant (epoch ms) regardless of the device's own timezone,
-        // so just shift it directly by 8 hours - no local offset needed.
-        const sgTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-        const hour = sgTime.getUTCHours();
-        const day = sgTime.getUTCDay();
-        const isWorkingHours = day >= 1 && day <= 5 && hour >= 9 && hour < 18;
-        setIsDark(!isWorkingHours);
-    }
     const theme = {
         isDark,
         colors: {
