@@ -49,8 +49,18 @@ export default function ChatScreen({ route }) {
 
     async function handBackToBot() {
         setHandingBack(true);
-        await setWorkerActive(false);
+        try {
+            await fetch(`${BOT_URL}/handover-to-bot`, {
+                method: 'POST',
+                headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId: conversation.chat_id }),
+            });
+            setBotActive(true);
+        } catch (e) {
+            console.error('Hand back to bot error:', e);
+        }
         setHandingBack(false);
+        fetchMessages();
     }
 
     async function fetchMessages() {
