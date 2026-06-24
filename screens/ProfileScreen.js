@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../supabase';
 import { useTheme } from '../context/ThemeContext';
 import { Camera, Phone, Pencil, LogOut } from 'lucide-react-native';
+import { MBTI_TYPES, mbtiLabel } from '../lib/mbti';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -16,7 +17,7 @@ export default function ProfileScreen({ worker }) {
     const [crisisNotifications, setCrisisNotifications] = useState(true);
     const [profile, setProfile] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [form, setForm] = useState({ name: '', phone: '' });
+    const [form, setForm] = useState({ name: '', phone: '', mbti: '' });
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -37,7 +38,7 @@ export default function ProfileScreen({ worker }) {
     }
 
     function openEdit() {
-        setForm({ name: profile?.name || '', phone: profile?.phone || '' });
+        setForm({ name: profile?.name || '', phone: profile?.phone || '', mbti: profile?.mbti || '' });
         setShowEditModal(true);
     }
 
@@ -49,13 +50,13 @@ export default function ProfileScreen({ worker }) {
                 await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}`, {
                     method: 'PATCH',
                     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-                    body: JSON.stringify({ name: form.name.trim(), phone: form.phone.trim() }),
+                    body: JSON.stringify({ name: form.name.trim(), phone: form.phone.trim(), mbti: form.mbti || null }),
                 });
             } else {
                 await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles`, {
                     method: 'POST',
                     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-                    body: JSON.stringify({ email: worker.email, name: form.name.trim(), phone: form.phone.trim() }),
+                    body: JSON.stringify({ email: worker.email, name: form.name.trim(), phone: form.phone.trim(), mbti: form.mbti || null }),
                 });
             }
             await fetchProfile();
@@ -139,8 +140,15 @@ export default function ProfileScreen({ worker }) {
                             <Text style={styles.phone}>{profile.phone}</Text>
                         </View>
                     ) : null}
-                    <View style={styles.roleBadge}>
-                        <Text style={styles.roleText}>Youth Worker · SCS</Text>
+                    <View style={styles.badgeRow}>
+                        <View style={styles.roleBadge}>
+                            <Text style={styles.roleText}>Youth Worker · SCS</Text>
+                        </View>
+                        {profile?.mbti ? (
+                            <View style={styles.mbtiBadge}>
+                                <Text style={styles.mbtiBadgeText}>{mbtiLabel(profile.mbti)}</Text>
+                            </View>
+                        ) : null}
                     </View>
                     <TouchableOpacity style={styles.editProfileBtn} onPress={openEdit}>
                         <Pencil size={14} color="#D97706" />
@@ -235,6 +243,22 @@ export default function ProfileScreen({ worker }) {
                                 keyboardType="phone-pad"
                             />
 
+                            <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Personality (MBTI)</Text>
+                            <Text style={styles.mbtiHint}>Used to surface youths you're naturally suited to support.</Text>
+                            <View style={styles.mbtiGrid}>
+                                {MBTI_TYPES.map(t => {
+                                    const sel = form.mbti === t.code;
+                                    return (
+                                        <TouchableOpacity
+                                            key={t.code}
+                                            style={[styles.mbtiChip, { backgroundColor: colors.input }, sel && styles.mbtiChipOn]}
+                                            onPress={() => setForm(f => ({ ...f, mbti: sel ? '' : t.code }))}>
+                                            <Text style={[styles.mbtiChipText, { color: colors.text }, sel && styles.mbtiChipTextOn]}>{t.code}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
                                     style={[styles.cancelBtn, { backgroundColor: colors.input }]}
@@ -283,8 +307,17 @@ const styles = StyleSheet.create({
     email: { fontSize: 14, color: '#8E8E93', marginTop: 2 },
     phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
     phone: { fontSize: 14, color: '#8E8E93' },
-    roleBadge: { backgroundColor: '#FCEFD7', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, marginTop: 8 },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 8 },
+    roleBadge: { backgroundColor: '#FCEFD7', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
     roleText: { color: '#D97706', fontSize: 13, fontWeight: '600' },
+    mbtiBadge: { backgroundColor: '#D97706', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
+    mbtiBadgeText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+    mbtiHint: { fontSize: 11, color: '#8E8E93', marginBottom: 8, marginTop: 2 },
+    mbtiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    mbtiChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, minWidth: 58, alignItems: 'center' },
+    mbtiChipOn: { backgroundColor: '#D97706' },
+    mbtiChipText: { fontSize: 13, fontWeight: '700' },
+    mbtiChipTextOn: { color: '#fff' },
     editProfileBtn: { marginTop: 14, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#D97706', flexDirection: 'row', alignItems: 'center', gap: 6 },
     editProfileBtnText: { color: '#D97706', fontSize: 14, fontWeight: '600' },
     section: { marginHorizontal: 16, marginTop: 24 },

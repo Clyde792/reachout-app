@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
-import { AlertTriangle, Clock, Users, UserPlus, ChevronRight, Heart, X } from 'lucide-react-native';
+import { AlertTriangle, Clock, Users, UserPlus, ChevronRight, Heart, X, Sparkles } from 'lucide-react-native';
+import { calculateCompatibility, BEST_MATCH_THRESHOLD } from '../lib/mbti';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -19,6 +20,7 @@ const MOODS = [
 export default function DashboardScreen({ navigation, worker }) {
     const [conversations, setConversations] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [myMbti, setMyMbti] = useState(null);
     const { colors, isDark } = useTheme();
 
     const [showWellbeing, setShowWellbeing] = useState(false);
@@ -27,7 +29,20 @@ export default function DashboardScreen({ navigation, worker }) {
 
     useEffect(() => {
         checkWellbeingPrompt();
+        fetchMyMbti();
     }, []);
+
+    async function fetchMyMbti() {
+        if (!worker?.email) return;
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}&select=mbti&limit=1`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            setMyMbti(Array.isArray(data) && data[0]?.mbti ? data[0].mbti : null);
+        } catch (e) { console.error('Fetch MBTI error:', e); }
+    }
 
     useFocusEffect(
         useCallback(() => {
@@ -107,14 +122,15 @@ export default function DashboardScreen({ navigation, worker }) {
                 { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
             );
             const data = await res.json();
-            const sorted = Array.isArray(data) ? sortByRisk(data) : [];
-            setConversations(sorted);
+            setConversations(Array.isArray(data) ? data : []);
         } catch (e) {
             console.error('Fetch error:', e);
         }
         setRefreshing(false);
     }
 
+    // Safety first: crisis, then risk level, then (as a tiebreaker) how well the
+    // youth's MBTI matches mine. Compatibility never outranks risk.
     function sortByRisk(list) {
         const riskScore = { high: 3, medium: 2, low: 1 };
         return [...list].sort((a, b) => {
@@ -123,7 +139,10 @@ export default function DashboardScreen({ navigation, worker }) {
             if (aCrisis !== bCrisis) return bCrisis - aCrisis;
             const aScore = riskScore[a.risk_level] || 0;
             const bScore = riskScore[b.risk_level] || 0;
-            return bScore - aScore;
+            if (aScore !== bScore) return bScore - aScore;
+            const aComp = calculateCompatibility(a.mbti, myMbti) || 0;
+            const bComp = calculateCompatibility(b.mbti, myMbti) || 0;
+            return bComp - aComp;
         });
     }
 
@@ -177,6 +196,8 @@ export default function DashboardScreen({ navigation, worker }) {
     function renderItem({ item }) {
         const isHighRisk = item.risk_level === 'high' || item.crisis;
         const isAssigned = !!item.assigned_worker;
+        const compat = calculateCompatibility(item.mbti, myMbti);
+        const isBestMatch = compat != null && compat >= BEST_MATCH_THRESHOLD;
 
         return (
             <TouchableOpacity
@@ -225,6 +246,13 @@ export default function DashboardScreen({ navigation, worker }) {
 
                     <ChevronRight size={16} color="#C7C7CC" />
                 </View>
+
+                {isBestMatch && (
+                    <View style={styles.bestMatch}>
+                        <Sparkles size={13} color="#fff" />
+                        <Text style={styles.bestMatchText}>Best Match with you · {compat}%</Text>
+                    </View>
+                )}
 
                 {item.snapshot ? (
                     <Text style={[styles.snapshot, { color: colors.subtext }]} numberOfLines={2}>{item.snapshot}</Text>
@@ -306,7 +334,7 @@ export default function DashboardScreen({ navigation, worker }) {
             </LinearGradient>
 
             <FlatList
-                data={conversations}
+                data={sortByRisk(conversations)}
                 keyExtractor={item => String(item.chat_id)}
                 renderItem={renderItem}
                 style={{ flex: 1, backgroundColor: 'transparent' }}
@@ -374,6 +402,8 @@ const styles = StyleSheet.create({
     assignedText: { fontSize: 10, color: '#D97706', fontWeight: '600' },
     takeCaseBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#34C759' },
     takeCaseText: { fontSize: 10, color: '#fff', fontWeight: '600' },
+    bestMatch: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', backgroundColor: '#34C759', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 9, marginTop: 10 },
+    bestMatchText: { color: '#fff', fontSize: 12, fontWeight: '700' },
     snapshot: { fontSize: 13, marginTop: 8, lineHeight: 18 },
     displayName: { fontSize: 15, fontWeight: '700' },
     usernameSmall: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
