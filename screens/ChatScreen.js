@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, Image, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bot, User, Languages, Send } from 'lucide-react-native';
+import { Bot, User, Languages, Send, ImagePlus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { pickAndUploadChatImage } from '../lib/chatImage';
 
 const BOT_URL = 'https://bot.lanternscs.org';
 const API_KEY = '73d80519c6fba42e';
@@ -15,6 +16,7 @@ export default function ChatScreen({ route }) {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [translations, setTranslations] = useState({});
     const [handingBack, setHandingBack] = useState(false);
     const [botActive, setBotActive] = useState(false);
@@ -111,6 +113,27 @@ export default function ChatScreen({ route }) {
         setSending(false);
     }
 
+    async function sendImage() {
+        if (uploading) return;
+        setUploading(true);
+        try {
+            const url = await pickAndUploadChatImage();
+            if (url) {
+                await fetch(`${BOT_URL}/send-photo`, {
+                    method: 'POST',
+                    headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId: conversation.chat_id,
+                        imageUrl: url,
+                        workerName: worker?.email?.split('@')[0] || 'Worker',
+                    }),
+                });
+                fetchMessages();
+            }
+        } catch (e) { console.error('Send image error:', e); }
+        setUploading(false);
+    }
+
     function confirmDelete(item) {
         Alert.alert(
             'Delete message',
@@ -169,9 +192,14 @@ export default function ChatScreen({ route }) {
                                 <Text style={styles.bubbleLabel}>{isWorker ? 'You' : 'Bot'}</Text>
                             </View>
                         )}
-                        <Text style={[styles.bubbleText, isYouth ? { color: colors.text } : styles.botText]}>
-                            {item.content?.replace(/^\[Worker [^\]]+\]: /, '') || ''}
-                        </Text>
+                        {item.image_url ? (
+                            <Image source={{ uri: item.image_url }} style={styles.bubbleImage} resizeMode="cover" />
+                        ) : null}
+                        {(item.content?.replace(/^\[Worker [^\]]+\]: /, '') || '') ? (
+                            <Text style={[styles.bubbleText, isYouth ? { color: colors.text } : styles.botText]}>
+                                {item.content?.replace(/^\[Worker [^\]]+\]: /, '') || ''}
+                            </Text>
+                        ) : null}
                         <Text style={[styles.bubbleTime, isYouth ? { color: colors.subtext } : styles.bubbleTimeOnColor]}>
                             {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
@@ -232,6 +260,9 @@ export default function ChatScreen({ route }) {
                 contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
             />
             <View style={[styles.inputRow, { backgroundColor: colors.header, borderTopColor: colors.border }]}>
+                <TouchableOpacity style={styles.imageBtn} onPress={sendImage} disabled={uploading}>
+                    {uploading ? <ActivityIndicator size="small" color="#D97706" /> : <ImagePlus size={22} color="#D97706" />}
+                </TouchableOpacity>
                 <TextInput
                     style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
                     value={text}
@@ -292,6 +323,8 @@ const styles = StyleSheet.create({
     translationText: { fontSize: 13, color: '#D97706', fontStyle: 'italic', flexShrink: 1 },
     translatingText: { fontSize: 12, color: '#8E8E93' },
     inputRow: { flexDirection: 'row', padding: 12, borderTopWidth: 0.5, alignItems: 'flex-end', gap: 8 },
+    imageBtn: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
+    bubbleImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4, backgroundColor: 'rgba(0,0,0,0.05)' },
     input: { flex: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100 },
     sendBtn: { backgroundColor: '#D97706', borderRadius: 22, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
     sendBtnDisabled: { backgroundColor: '#C7C7CC' },

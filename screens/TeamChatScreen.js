@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, Image, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Send } from 'lucide-react-native';
+import { Send, ImagePlus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { pickAndUploadChatImage } from '../lib/chatImage';
 
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
@@ -14,6 +15,7 @@ export default function TeamChatScreen({ route }) {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const flatListRef = useRef(null);
 
     const myEmail = worker?.email || '';
@@ -66,6 +68,31 @@ export default function TeamChatScreen({ route }) {
         setSending(false);
     }
 
+    async function sendImage() {
+        if (uploading) return;
+        setUploading(true);
+        try {
+            const url = await pickAndUploadChatImage();
+            if (url) {
+                await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
+                    method: 'POST',
+                    headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({
+                        thread_id: thread.id, sender_email: myEmail, sender_name: myName,
+                        content: '', image_url: url,
+                    }),
+                });
+                fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
+                    method: 'PATCH',
+                    headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({ last_message: '📷 Photo', last_message_time: new Date().toISOString(), last_sender_email: myEmail }),
+                }).catch(() => {});
+                fetchMessages();
+            }
+        } catch (e) { console.error('Send image error:', e); }
+        setUploading(false);
+    }
+
     function confirmDelete(item) {
         Alert.alert('Delete message', 'Delete this message for everyone?', [
             { text: 'Cancel', style: 'cancel' },
@@ -102,9 +129,14 @@ export default function TeamChatScreen({ route }) {
                         {!mine && isGroup && (
                             <Text style={styles.senderName}>{item.sender_name || item.sender_email?.split('@')[0]}</Text>
                         )}
-                        <Text style={[styles.bubbleText, mine ? styles.mineText : { color: colors.text }]}>
-                            {item.content}
-                        </Text>
+                        {item.image_url ? (
+                            <Image source={{ uri: item.image_url }} style={styles.bubbleImage} resizeMode="cover" />
+                        ) : null}
+                        {item.content ? (
+                            <Text style={[styles.bubbleText, mine ? styles.mineText : { color: colors.text }]}>
+                                {item.content}
+                            </Text>
+                        ) : null}
                         <Text style={[styles.bubbleTime, mine ? styles.mineTime : { color: colors.subtext }]}>
                             {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
@@ -132,6 +164,9 @@ export default function TeamChatScreen({ route }) {
                 }
             />
             <View style={[styles.inputRow, { backgroundColor: colors.header, borderTopColor: colors.border }]}>
+                <TouchableOpacity style={styles.imageBtn} onPress={sendImage} disabled={uploading}>
+                    {uploading ? <ActivityIndicator size="small" color="#D97706" /> : <ImagePlus size={22} color="#D97706" />}
+                </TouchableOpacity>
                 <TextInput
                     style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
                     value={text}
@@ -178,6 +213,8 @@ const styles = StyleSheet.create({
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 80 },
     emptyText: { fontSize: 14 },
     inputRow: { flexDirection: 'row', padding: 12, borderTopWidth: 0.5, alignItems: 'flex-end', gap: 8 },
+    imageBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    bubbleImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4, backgroundColor: 'rgba(0,0,0,0.05)' },
     input: { flex: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100 },
     sendBtn: { backgroundColor: '#D97706', borderRadius: 22, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
     sendBtnDisabled: { backgroundColor: '#C7C7CC' },
