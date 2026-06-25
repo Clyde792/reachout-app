@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { Plus, Pencil, Trash2, Users, Mail, Phone } from 'lucide-react-native';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
@@ -31,7 +32,7 @@ export default function ManageWorkersScreen({ navigation }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/workers?order=created_at.asc`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             setWorkers(Array.isArray(data) ? data : []);
@@ -66,13 +67,13 @@ export default function ManageWorkersScreen({ navigation }) {
             if (editingWorker) {
                 await fetch(`${SUPABASE_URL}/rest/v1/workers?id=eq.${editingWorker.id}`, {
                     method: 'PATCH',
-                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ name: form.name.trim(), role: form.role.trim(), email: form.email.trim(), phone: form.phone.trim() }),
                 });
             } else {
                 await fetch(`${SUPABASE_URL}/rest/v1/workers`, {
                     method: 'POST',
-                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ name: form.name.trim(), role: form.role.trim(), email: form.email.trim(), phone: form.phone.trim() }),
                 });
             }
@@ -96,7 +97,7 @@ export default function ManageWorkersScreen({ navigation }) {
                         try {
                             await fetch(`${SUPABASE_URL}/rest/v1/workers?id=eq.${worker.id}`, {
                                 method: 'DELETE',
-                                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: 'return=minimal' },
+                                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, Prefer: 'return=minimal' },
                             });
                             setWorkers(prev => prev.filter(w => w.id !== worker.id));
                         } catch (e) {

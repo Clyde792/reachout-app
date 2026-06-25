@@ -8,9 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { Users, UserPlus, Pencil, LogOut, Check, X } from 'lucide-react-native';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
 const WRITE = { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 

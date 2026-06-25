@@ -9,9 +9,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { Users, Plus, Search, X } from 'lucide-react-native';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
 const WRITE_HEADERS = { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=representation' };
 
 // "online" if the worker's app phoned home within the last 2 minutes.

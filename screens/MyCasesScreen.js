@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { AlertTriangle, Clock, Repeat, Check, X, Search } from 'lucide-react-native';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 const BOT_URL = 'https://bot.lanternscs.org';
@@ -46,7 +47,7 @@ export default function MyCasesScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_profiles?select=email,name`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -64,7 +65,7 @@ export default function MyCasesScreen({ navigation, worker }) {
         const chatIds = [...new Set(data.map(r => r.chat_id))];
         const convRes = await fetch(
             `${SUPABASE_URL}/rest/v1/conversations?chat_id=in.(${chatIds.join(',')})&select=*`,
-            { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
         );
         const convData = await convRes.json();
         return data.map(req => ({
@@ -77,7 +78,7 @@ export default function MyCasesScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${chatId}&select=*`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             return Array.isArray(data) && data[0] ? data[0] : null;
@@ -92,7 +93,7 @@ export default function MyCasesScreen({ navigation, worker }) {
             const email = worker?.email;
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?select=*&assigned_worker=eq.${encodeURIComponent(email)}&order=last_message_time.desc.nullslast`,
-                { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+                { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             const sorted = Array.isArray(data) ? sortByRisk(data) : [];
@@ -119,7 +120,7 @@ export default function MyCasesScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/handover_requests?to_worker=eq.${encodeURIComponent(worker?.email)}&status=eq.pending&select=*&order=created_at.desc`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             const merged = await attachConversations(data);
@@ -133,7 +134,7 @@ export default function MyCasesScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/handover_requests?from_worker=eq.${encodeURIComponent(worker?.email)}&status=eq.pending&select=*&order=created_at.desc`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             const merged = await attachConversations(data);
@@ -152,7 +153,7 @@ export default function MyCasesScreen({ navigation, worker }) {
             // this list automatically — no stale duplicates.
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?handover_from=eq.${encodeURIComponent(worker?.email)}&select=chat_id,username,display_name,risk_level,crisis,assigned_worker,mood_score,handover_at&order=handover_at.desc.nullslast`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             const merged = (Array.isArray(data) ? data : [])
@@ -169,14 +170,14 @@ export default function MyCasesScreen({ navigation, worker }) {
         try {
             await fetch(`${SUPABASE_URL}/rest/v1/handover_requests?id=eq.${request.id}`, {
                 method: 'PATCH',
-                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body: JSON.stringify({ status: accept ? 'accepted' : 'declined', responded_at: new Date().toISOString() }),
             });
 
             if (accept) {
                 await fetch(`${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${request.chat_id}`, {
                     method: 'PATCH',
-                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({
                         assigned_worker: worker?.email,
                         handover_from: request.from_worker,
@@ -187,7 +188,7 @@ export default function MyCasesScreen({ navigation, worker }) {
 
                 await fetch(`${SUPABASE_URL}/rest/v1/case_history`, {
                     method: 'POST',
-                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({
                         chat_id: request.chat_id,
                         worker_email: request.from_worker,

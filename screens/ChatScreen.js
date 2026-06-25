@@ -8,6 +8,7 @@ import ImageViewer from '../components/ImageViewer';
 
 const BOT_URL = 'https://bot.lanternscs.org';
 const API_KEY = '73d80519c6fba42e';
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
@@ -55,7 +56,7 @@ export default function ChatScreen({ route }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${conversation.chat_id}&select=bot_handling`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             if (Array.isArray(data) && data[0]?.bot_handling) {
@@ -117,7 +118,7 @@ export default function ChatScreen({ route }) {
                 {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Authorization': `Bearer ${authToken()}`,
                     },
                 }
             );
@@ -222,7 +223,7 @@ export default function ChatScreen({ route }) {
                         try {
                             await fetch(`${SUPABASE_URL}/rest/v1/messages?id=eq.${item.id}`, {
                                 method: 'DELETE',
-                                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Prefer: 'return=minimal' },
+                                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, Prefer: 'return=minimal' },
                             });
                         } catch (e) { console.error('Delete message error:', e); fetchMessages(); }
                     },

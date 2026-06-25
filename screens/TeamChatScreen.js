@@ -6,9 +6,10 @@ import { useTheme } from '../context/ThemeContext';
 import { pickAndUploadChatImage } from '../lib/chatImage';
 import ImageViewer from '../components/ImageViewer';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
 
 export default function TeamChatScreen({ route }) {
     const { thread, worker, myName } = route.params;

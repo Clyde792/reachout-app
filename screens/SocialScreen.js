@@ -8,6 +8,7 @@ import { Search, AlertTriangle, ChevronRight, ArrowLeft, AtSign } from 'lucide-r
 
 const BOT_URL = 'https://bot.lanternscs.org';
 const API_KEY = '73d80519c6fba42e';
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
@@ -32,7 +33,7 @@ export default function SocialScreen({ worker }) {
             const email = worker?.email;
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?select=*&assigned_worker=eq.${encodeURIComponent(email)}&order=last_message_time.desc.nullslast`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             setCases(Array.isArray(data) ? data : []);

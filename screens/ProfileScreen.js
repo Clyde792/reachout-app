@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Camera, Phone, Pencil, LogOut } from 'lucide-react-native';
 import { MBTI_TYPES, mbtiLabel } from '../lib/mbti';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 
@@ -30,7 +31,7 @@ export default function ProfileScreen({ worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}&limit=1`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) setProfile(data[0]);
@@ -49,13 +50,13 @@ export default function ProfileScreen({ worker }) {
             if (profile) {
                 await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}`, {
                     method: 'PATCH',
-                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ name: form.name.trim(), phone: form.phone.trim(), mbti: form.mbti || null }),
                 });
             } else {
                 await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles`, {
                     method: 'POST',
-                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ email: worker.email, name: form.name.trim(), phone: form.phone.trim(), mbti: form.mbti || null }),
                 });
             }
@@ -92,7 +93,7 @@ export default function ProfileScreen({ worker }) {
 
             await fetch(url, {
                 method,
-                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body,
             });
             await fetchProfile();

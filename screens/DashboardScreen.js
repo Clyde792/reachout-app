@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { AlertTriangle, Clock, Users, UserPlus, ChevronRight, Heart, X, Sparkles } from 'lucide-react-native';
 import { calculateCompatibility, BEST_MATCH_THRESHOLD } from '../lib/mbti';
 
+import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
 const BOT_URL = 'https://bot.lanternscs.org';
@@ -40,7 +41,7 @@ export default function DashboardScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_profiles?email=eq.${encodeURIComponent(worker.email)}&select=mbti,name&limit=1`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             setMyMbti(Array.isArray(data) && data[0]?.mbti ? data[0].mbti : null);
@@ -76,7 +77,7 @@ export default function DashboardScreen({ navigation, worker }) {
                 method: 'POST',
                 headers: {
                     apikey: SUPABASE_KEY,
-                    Authorization: `Bearer ${SUPABASE_KEY}`,
+                    Authorization: `Bearer ${authToken()}`,
                     'Content-Type': 'application/json',
                     Prefer: 'return=minimal',
                 },
@@ -100,7 +101,7 @@ export default function DashboardScreen({ navigation, worker }) {
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_wellbeing?worker_email=eq.${encodeURIComponent(worker?.email)}&mood=eq.not_great&created_at=gte.${sevenDaysAgo}&select=id`,
-                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             if (Array.isArray(data) && data.length >= 3) {
@@ -123,7 +124,7 @@ export default function DashboardScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/conversations?select=*&assigned_worker=is.null&order=last_message_time.desc.nullslast`,
-                { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+                { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authToken()}` } }
             );
             const data = await res.json();
             setConversations(Array.isArray(data) ? data : []);
@@ -163,7 +164,7 @@ export default function DashboardScreen({ navigation, worker }) {
                                 `${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${item.chat_id}`,
                                 {
                                     method: 'PATCH',
-                                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authToken()}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
                                     body: JSON.stringify({ assigned_worker: worker?.email }),
                                 }
                             );
