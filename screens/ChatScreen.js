@@ -31,10 +31,9 @@ export default function ChatScreen({ route }) {
     useEffect(() => {
         fetchMessages();
         const interval = setInterval(fetchMessages, 5000);
-        setWorkerActive(true); // pause bot while worker is in this chat
-        // Heartbeat: keep the worker-active window fresh so the bot never jumps
-        // in while we're still in the chat (the flag otherwise lapses after 1h).
-        // Skips refreshing if we've handed the chat to the bot.
+        initPresence(); // pause the bot if I'm taking it — but NOT if it's already handling this chat
+        // Heartbeat: keep the worker-active window fresh while I'm here (presence
+        // only — never reclaims a chat the bot is currently handling).
         const presence = setInterval(() => {
             if (!botActiveRef.current) {
                 fetch(`${BOT_URL}/worker-active`, {
@@ -50,12 +49,29 @@ export default function ChatScreen({ route }) {
         };
     }, []);
 
-    async function setWorkerActive(active) {
+    // On open: if the bot is currently handling this chat, leave it be (just show
+    // "Take Over") — opening must NOT reclaim. Otherwise pause the bot while I view.
+    async function initPresence() {
+        try {
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/conversations?chat_id=eq.${conversation.chat_id}&select=bot_handling`,
+                { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            const data = await res.json();
+            if (Array.isArray(data) && data[0]?.bot_handling) {
+                setBotActive(true); // bot keeps handling; don't pause or reclaim
+                return;
+            }
+        } catch (e) { /* fall through to pausing the bot */ }
+        setWorkerActive(true);
+    }
+
+    async function setWorkerActive(active, reclaim) {
         try {
             await fetch(`${BOT_URL}/worker-active`, {
                 method: 'POST',
                 headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: conversation.chat_id, active }),
+                body: JSON.stringify({ chatId: conversation.chat_id, active, reclaim: !!reclaim }),
             });
             setBotActive(!active);
         } catch (e) {
@@ -66,23 +82,30 @@ export default function ChatScreen({ route }) {
     async function handBackToBot() {
         setHandingBack(true);
         try {
-            await fetch(`${BOT_URL}/handover-to-bot`, {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 12000);
+            const res = await fetch(`${BOT_URL}/handover-to-bot`, {
                 method: 'POST',
                 headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ chatId: conversation.chat_id }),
+                signal: ctrl.signal,
             });
+            clearTimeout(timer);
+            if (!res.ok) throw new Error('Handover failed (' + res.status + ')');
             setBotActive(true);
         } catch (e) {
             console.error('Hand back to bot error:', e);
+            Alert.alert('Could not hand back to bot', e?.message || 'Please try again.');
+        } finally {
+            setHandingBack(false);
         }
-        setHandingBack(false);
         fetchMessages();
     }
 
-    // Override: pull the chat back from the bot to the worker.
+    // Override: explicitly pull the chat back from the bot to the worker.
     async function takeOverFromBot() {
         setHandingBack(true);
-        await setWorkerActive(true); // sets worker_active=true + clears bot_handling; flips botActive off
+        await setWorkerActive(true, true); // reclaim: worker_active=true + clears bot_handling
         setHandingBack(false);
         fetchMessages();
     }
