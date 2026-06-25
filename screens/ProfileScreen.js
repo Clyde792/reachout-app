@@ -245,7 +245,7 @@ export default function ProfileScreen({ worker }) {
                             />
 
                             <Text style={[styles.fieldLabel, { color: colors.subtext }]}>Personality (MBTI)</Text>
-                            <Text style={styles.mbtiHint}>Used to surface youths you're naturally suited to support.</Text>
+                            <Text style={styles.mbtiHint}>Used to surface youths you're naturally suited to support. A soft compatibility signal — not a clinical assessment.</Text>
                             <View style={styles.mbtiGrid}>
                                 {MBTI_TYPES.map(t => {
                                     const sel = form.mbti === t.code;
