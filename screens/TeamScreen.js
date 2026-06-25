@@ -12,8 +12,9 @@ import { Users, Plus, Search, X } from 'lucide-react-native';
 import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
-const WRITE_HEADERS = { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=representation' };
+// Functions (per-request) so the JWT is read at call time, not frozen at import.
+const HEADERS = () => ({ apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` });
+const WRITE_HEADERS = () => ({ ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=representation' });
 
 // "online" if the worker's app phoned home within the last 2 minutes.
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
@@ -57,7 +58,7 @@ export default function TeamScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_profiles?select=email,name,phone,photo_url,photo_base64&order=name.asc`,
-                { headers: HEADERS }
+                { headers: HEADERS() }
             );
             const data = await res.json();
             setProfiles(Array.isArray(data) ? data : []);
@@ -68,7 +69,7 @@ export default function TeamScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_profiles?select=email,last_seen`,
-                { headers: HEADERS }
+                { headers: HEADERS() }
             );
             const data = await res.json();
             const map = {};
@@ -82,7 +83,7 @@ export default function TeamScreen({ navigation, worker }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_thread_members?member_email=eq.${encodeURIComponent(myEmail)}&select=thread_id,worker_threads(*)`,
-                { headers: HEADERS }
+                { headers: HEADERS() }
             );
             const rows = await res.json();
             const threads = (Array.isArray(rows) ? rows : []).map(r => r.worker_threads).filter(Boolean);
@@ -117,7 +118,7 @@ export default function TeamScreen({ navigation, worker }) {
             try {
                 const res = await fetch(
                     `${SUPABASE_URL}/rest/v1/worker_dm_messages?thread_id=eq.${t.id}&sender_email=neq.${encodeURIComponent(myEmail)}&created_at=gt.${encodeURIComponent(since)}&select=id`,
-                    { headers: { ...HEADERS, Prefer: 'count=exact', Range: '0-0' } }
+                    { headers: { ...HEADERS(), Prefer: 'count=exact', Range: '0-0' } }
                 );
                 const cr = res.headers.get('content-range') || '';
                 const total = parseInt(cr.split('/')[1], 10);
@@ -132,7 +133,7 @@ export default function TeamScreen({ navigation, worker }) {
         try {
             await fetch(`${SUPABASE_URL}/rest/v1/worker_profiles?on_conflict=email`, {
                 method: 'POST',
-                headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+                headers: { ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
                 body: JSON.stringify({ email: myEmail, last_seen: new Date().toISOString() }),
             });
         } catch (e) { /* presence is best-effort */ }
@@ -175,20 +176,20 @@ export default function TeamScreen({ navigation, worker }) {
             if (!thread) {
                 let res = await fetch(
                     `${SUPABASE_URL}/rest/v1/worker_threads?dm_key=eq.${encodeURIComponent(dmKey)}&select=*`,
-                    { headers: HEADERS }
+                    { headers: HEADERS() }
                 );
                 const found = await res.json();
                 thread = Array.isArray(found) && found[0];
 
                 if (!thread) {
                     res = await fetch(`${SUPABASE_URL}/rest/v1/worker_threads`, {
-                        method: 'POST', headers: WRITE_HEADERS,
+                        method: 'POST', headers: WRITE_HEADERS(),
                         body: JSON.stringify({ is_group: false, dm_key: dmKey, created_by: myEmail }),
                     });
                     const created = await res.json();
                     thread = Array.isArray(created) ? created[0] : created;
                     await fetch(`${SUPABASE_URL}/rest/v1/worker_thread_members`, {
-                        method: 'POST', headers: { ...WRITE_HEADERS, Prefer: 'return=minimal' },
+                        method: 'POST', headers: { ...WRITE_HEADERS(), Prefer: 'return=minimal' },
                         body: JSON.stringify([
                             { thread_id: thread.id, member_email: myEmail, member_name: myName },
                             { thread_id: thread.id, member_email: other.email, member_name: other.name },

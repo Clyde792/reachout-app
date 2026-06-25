@@ -9,8 +9,9 @@ import { Check } from 'lucide-react-native';
 import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
-const WRITE_HEADERS = { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=representation' };
+// Functions (per-request) so the JWT is read at call time, not frozen at import.
+const HEADERS = () => ({ apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` });
+const WRITE_HEADERS = () => ({ ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=representation' });
 
 export default function NewGroupScreen({ route, navigation }) {
     const { worker, myName, profiles } = route.params;
@@ -47,7 +48,7 @@ export default function NewGroupScreen({ route, navigation }) {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/worker_threads`, {
                 method: 'POST',
-                headers: WRITE_HEADERS,
+                headers: WRITE_HEADERS(),
                 body: JSON.stringify({ is_group: true, name: name.trim(), created_by: myEmail }),
             });
             const created = await res.json();
@@ -59,7 +60,7 @@ export default function NewGroupScreen({ route, navigation }) {
             ];
             await fetch(`${SUPABASE_URL}/rest/v1/worker_thread_members`, {
                 method: 'POST',
-                headers: { ...WRITE_HEADERS, Prefer: 'return=minimal' },
+                headers: { ...WRITE_HEADERS(), Prefer: 'return=minimal' },
                 body: JSON.stringify(members),
             });
 

@@ -9,7 +9,8 @@ import ImageViewer from '../components/ImageViewer';
 import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
+// Function (per-request) so the JWT is read at call time, not frozen at import.
+const HEADERS = () => ({ apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` });
 
 export default function TeamChatScreen({ route }) {
     const { thread, worker, myName } = route.params;
@@ -34,7 +35,7 @@ export default function TeamChatScreen({ route }) {
         try {
             const res = await fetch(
                 `${SUPABASE_URL}/rest/v1/worker_dm_messages?thread_id=eq.${thread.id}&order=created_at.asc`,
-                { headers: HEADERS }
+                { headers: HEADERS() }
             );
             const data = await res.json();
             setMessages(Array.isArray(data) ? data : []);
@@ -49,7 +50,7 @@ export default function TeamChatScreen({ route }) {
         try {
             await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
                 method: 'POST',
-                headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                headers: { ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body: JSON.stringify({
                     thread_id: thread.id,
                     sender_email: myEmail,
@@ -60,7 +61,7 @@ export default function TeamChatScreen({ route }) {
             // Keep the thread's last-message preview fresh for the Team list.
             fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
                 method: 'PATCH',
-                headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                headers: { ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                 body: JSON.stringify({ last_message: body, last_message_time: new Date().toISOString(), last_sender_email: myEmail }),
             }).catch(() => {});
             fetchMessages();
@@ -79,7 +80,7 @@ export default function TeamChatScreen({ route }) {
             if (url) {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
                     method: 'POST',
-                    headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({
                         thread_id: thread.id, sender_email: myEmail, sender_name: myName,
                         content: '', image_url: url,
@@ -91,7 +92,7 @@ export default function TeamChatScreen({ route }) {
                 }
                 fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
                     method: 'PATCH',
-                    headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    headers: { ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
                     body: JSON.stringify({ last_message: '📷 Photo', last_message_time: new Date().toISOString(), last_sender_email: myEmail }),
                 }).catch(() => {});
                 fetchMessages();
@@ -111,7 +112,7 @@ export default function TeamChatScreen({ route }) {
                     setMessages(prev => prev.filter(m => m.id !== item.id));
                     try {
                         await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages?id=eq.${item.id}`, {
-                            method: 'DELETE', headers: { ...HEADERS, Prefer: 'return=minimal' },
+                            method: 'DELETE', headers: { ...HEADERS(), Prefer: 'return=minimal' },
                         });
                     } catch (e) { console.error('Delete message error:', e); fetchMessages(); }
                 },

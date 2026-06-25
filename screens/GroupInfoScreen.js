@@ -11,8 +11,10 @@ import { Users, UserPlus, Pencil, LogOut, Check, X } from 'lucide-react-native';
 import { authToken } from '../lib/db';
 const SUPABASE_URL = 'https://skkgaaijrslwclfednri.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W0zoIpw-xHqFBIV7Ss-tkQ_UBf4w-4c';
-const HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` };
-const WRITE = { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+// Functions (evaluated per request) so the worker's JWT is read at call time,
+// not frozen to the anon token at module load. Required for RLS.
+const HEADERS = () => ({ apikey: SUPABASE_KEY, Authorization: `Bearer ${authToken()}` });
+const WRITE = () => ({ ...HEADERS(), 'Content-Type': 'application/json', Prefer: 'return=minimal' });
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 
 export default function GroupInfoScreen({ route, navigation }) {
@@ -39,8 +41,8 @@ export default function GroupInfoScreen({ route, navigation }) {
     async function load() {
         try {
             const [mRes, pRes] = await Promise.all([
-                fetch(`${SUPABASE_URL}/rest/v1/worker_thread_members?thread_id=eq.${thread.id}&select=member_email,member_name`, { headers: HEADERS }),
-                fetch(`${SUPABASE_URL}/rest/v1/worker_profiles?select=email,name,photo_url,photo_base64,last_seen`, { headers: HEADERS }),
+                fetch(`${SUPABASE_URL}/rest/v1/worker_thread_members?thread_id=eq.${thread.id}&select=member_email,member_name`, { headers: HEADERS() }),
+                fetch(`${SUPABASE_URL}/rest/v1/worker_profiles?select=email,name,photo_url,photo_base64,last_seen`, { headers: HEADERS() }),
             ]);
             const m = await mRes.json();
             const p = await pRes.json();
@@ -76,18 +78,18 @@ export default function GroupInfoScreen({ route, navigation }) {
         setAdding(true);
         try {
             await fetch(`${SUPABASE_URL}/rest/v1/worker_thread_members`, {
-                method: 'POST', headers: { ...WRITE, Prefer: 'resolution=merge-duplicates,return=minimal' },
+                method: 'POST', headers: { ...WRITE(), Prefer: 'resolution=merge-duplicates,return=minimal' },
                 body: JSON.stringify(chosen.map(p => ({ thread_id: thread.id, member_email: p.email, member_name: p.name }))),
             });
             // Post a small system note so the group sees who joined.
             const added = chosen.map(p => p.name).join(', ');
             const note = `__sys__${myName} added ${added}`;
             fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
-                method: 'POST', headers: WRITE,
+                method: 'POST', headers: WRITE(),
                 body: JSON.stringify({ thread_id: thread.id, sender_email: myEmail, sender_name: myName, content: note }),
             }).catch(() => {});
             fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
-                method: 'PATCH', headers: WRITE,
+                method: 'PATCH', headers: WRITE(),
                 body: JSON.stringify({ last_message: `${myName} added ${added}`, last_message_time: new Date().toISOString(), last_sender_email: myEmail }),
             }).catch(() => {});
             setPicked({});
@@ -103,7 +105,7 @@ export default function GroupInfoScreen({ route, navigation }) {
         setRenaming(true);
         try {
             await fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
-                method: 'PATCH', headers: WRITE, body: JSON.stringify({ name: v }),
+                method: 'PATCH', headers: WRITE(), body: JSON.stringify({ name: v }),
             });
             setName(v);
             thread.name = v;
@@ -121,15 +123,15 @@ export default function GroupInfoScreen({ route, navigation }) {
                     try {
                         // Post a system note so the group sees who left.
                         await fetch(`${SUPABASE_URL}/rest/v1/worker_dm_messages`, {
-                            method: 'POST', headers: WRITE,
+                            method: 'POST', headers: WRITE(),
                             body: JSON.stringify({ thread_id: thread.id, sender_email: myEmail, sender_name: myName, content: `__sys__${myName} left the group` }),
                         }).catch(() => {});
                         await fetch(`${SUPABASE_URL}/rest/v1/worker_threads?id=eq.${thread.id}`, {
-                            method: 'PATCH', headers: WRITE,
+                            method: 'PATCH', headers: WRITE(),
                             body: JSON.stringify({ last_message: `${myName} left the group`, last_message_time: new Date().toISOString(), last_sender_email: myEmail }),
                         }).catch(() => {});
                         await fetch(`${SUPABASE_URL}/rest/v1/worker_thread_members?thread_id=eq.${thread.id}&member_email=eq.${encodeURIComponent(myEmail)}`, {
-                            method: 'DELETE', headers: WRITE,
+                            method: 'DELETE', headers: WRITE(),
                         });
                         navigation.navigate('Tabs');
                     } catch (e) { console.error('Leave error:', e); }
